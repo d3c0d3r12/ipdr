@@ -1,10 +1,11 @@
 # 🔧 Frontend Build Fix
 
-## ❌ Problem
-Frontend build failed with: `Missing script: "generate"`
+## ❌ Problems
+1. Frontend build failed with: `Missing script: "generate"`
+2. Missing dependency: `@tailwindcss/forms`
 
 ## ✅ Solution
-Updated frontend configuration for static site generation on Render.
+Updated frontend configuration for static site generation and added missing dependencies.
 
 ---
 
@@ -14,11 +15,13 @@ Updated frontend configuration for static site generation on Render.
 **Added:**
 ```json
 "generate": "nuxt generate"
+"@tailwindcss/forms": "^0.5.7"
 ```
 
 **Changed:**
 - Name: `police-frontend` → `ipdr-tracking-hub-frontend`
 - Preview script updated
+- Added missing Tailwind CSS forms plugin
 
 ### 2. `frontend/nuxt.config.ts`
 **Changed:**
