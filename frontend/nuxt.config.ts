@@ -22,7 +22,7 @@ export default defineNuxtConfig({
 	},
 	nitro: {
 		compatibilityDate: '2025-10-29',
-		preset: 'node-server'
+		preset: 'static'
 	},
-	ssr: true
+	ssr: false
 })
