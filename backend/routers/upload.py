@@ -58,7 +58,8 @@ async def upload_file(
 	background: BackgroundTasks,
 	file: UploadFile = File(...),
 	fir: str = Form("UNKNOWN"),
-	preserve_duplicates: bool = Form(False)
+	preserve_duplicates: bool = Form(False),
+	bypass_cloudflare: bool = Form(False)
 ):
 	"""
 	Upload HTML file and extract IP activity
@@ -67,6 +68,7 @@ async def upload_file(
 		file: HTML file to upload
 		fir: FIR number/case identifier
 		preserve_duplicates: If True, keep duplicate IPs in batches; if False, remove duplicates (default)
+		bypass_cloudflare: If True, use Cloudflare bypass for unlimited InfoByIP access
 		background: Background tasks handler
 	"""
 	if not file.filename.endswith(('.html', '.htm')):
@@ -103,6 +105,7 @@ async def upload_file(
 		f"FIR: {fir}\n"
 		f"Filename: {file.filename}\n"
 		f"Preserve Duplicates: {'Yes' if preserve_duplicates else 'No'}\n"
+		f"Bypass Cloudflare: {'Yes' if bypass_cloudflare else 'No'}\n"
 		f"Total Records: {len(rows)}\n"
 		f"Unique IPs: {len(set(ips))}\n"
 		f"Timestamp: {ts}\n",
@@ -120,5 +123,6 @@ async def upload_file(
 		"batches": [str(p) for p in batches],
 		"count_rows": len(rows),
 		"unique_ips": len(set(ips)),
-		"preserve_duplicates": preserve_duplicates
+		"preserve_duplicates": preserve_duplicates,
+		"bypass_cloudflare": bypass_cloudflare
 	}

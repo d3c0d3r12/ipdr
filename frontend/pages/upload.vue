@@ -7,6 +7,7 @@ const apiBase = config.public.apiBase || 'http://localhost:8000'
 const firNo = ref('')
 const file = ref<File | null>(null)
 const preserveDuplicates = ref(false)
+const bypassCloudflare = ref(false)
 const message = ref('')
 const runDir = ref('')
 const uploading = ref(false)
@@ -29,6 +30,7 @@ async function uploadFile() {
   formData.append('file', file.value)
   formData.append('fir', firNo.value)
   formData.append('preserve_duplicates', preserveDuplicates.value.toString())
+  formData.append('bypass_cloudflare', bypassCloudflare.value.toString())
   
   try {
     const response = await fetch(`${apiBase}/api/upload/`, {
@@ -133,6 +135,27 @@ function startPolling() {
               <span class="text-slate-200">Preserve duplicates</span>
               <span class="block text-xs text-slate-400 mt-1">
                 Keep duplicate IPs in batch files (slower but maintains original structure)
+              </span>
+            </label>
+          </div>
+          
+          <div class="flex items-center space-x-3 p-4 bg-gradient-to-r from-orange-900/20 to-red-900/20 border border-orange-700/50 rounded">
+            <input 
+              type="checkbox" 
+              id="bypassCloudflare" 
+              v-model="bypassCloudflare"
+              class="w-4 h-4 text-orange-600 bg-slate-800 border-orange-600 rounded focus:ring-orange-500 focus:ring-2"
+            />
+            <label for="bypassCloudflare" class="text-sm font-medium cursor-pointer">
+              <div class="flex items-center space-x-2">
+                <span class="text-orange-400">🔥 Bypass Cloudflare</span>
+                <span class="px-2 py-0.5 bg-orange-600 text-white text-xs rounded-full font-bold">UNLIMITED</span>
+              </div>
+              <span class="block text-xs text-orange-300 mt-1">
+                Use advanced anti-detection to bypass Cloudflare protection for unlimited InfoByIP access
+              </span>
+              <span class="block text-xs text-orange-400/70 mt-1">
+                ⚡ Slower but bypasses rate limits • 🎯 Best for large datasets • 🔒 Stealth mode enabled
               </span>
             </label>
           </div>
