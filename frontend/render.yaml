@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: police-intel-frontend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run preview
+    envVars:
+      - key: NUXT_PUBLIC_API_BASE
+        value: https://your-backend.onrender.com
+      - key: NODE_VERSION
+        value: 20
+

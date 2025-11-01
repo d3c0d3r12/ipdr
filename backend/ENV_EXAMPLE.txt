@@ -1,0 +1,16 @@
+# ============================================
+# ENVIRONMENT VARIABLES TEMPLATE
+# ============================================
+# Copy values to Render.com Environment Variables (production)
+# OR create .env file for local development (never commit .env!)
+# ============================================
+
+# Neon Database Connection (get from Neon dashboard)
+DATABASE_URL=postgresql://USERNAME:PASSWORD@ep-xxxx-xxxx.region.aws.neon.tech/dbname?sslmode=require
+
+# JWT Secret - Generate random string (32+ chars recommended)
+# Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+JWT_SECRET=CHANGE_THIS_TO_RANDOM_STRING_32_CHARS_MIN
+
+# InfoByIP URL (optional - leave empty to use default Selenium automation)
+INFOBYIP_URL=

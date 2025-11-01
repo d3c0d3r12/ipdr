@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: police_db
+    environment:
+      POSTGRES_USER: police
+      POSTGRES_PASSWORD: policepass
+      POSTGRES_DB: police_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: police_redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ./backend
+    container_name: police_backend
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://police:policepass@db:5432/police_app
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=dev-secret-change
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: police_frontend
+    environment:
+      - NUXT_PUBLIC_API_BASE=http://localhost:8000
+    ports:
+      - "3001:3000"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:

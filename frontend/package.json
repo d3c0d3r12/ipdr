@@ -1,0 +1,16 @@
+{
+  "name": "police-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "start": "node .output/server/index.mjs",
+    "preview": "node .output/server/index.mjs"
+  },
+  "dependencies": {
+    "nuxt": "^3.12.4",
+    "@nuxtjs/tailwindcss": "^6.12.1",
+    "ofetch": "^1.4.1"
+  }
+}

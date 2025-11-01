@@ -1,0 +1,94 @@
+# Environment Variables & Secrets (NEVER COMMIT THESE!)
+.env
+.env.local
+.env.production
+.env.*.local
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+
+# Node.js
+node_modules/
+.npm
+.pnpm-debug.log
+yarn-error.log
+.output/
+.nuxt/
+.nitro/
+.cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/*.log
+!logs/.gitkeep
+
+# Uploads & Processed Data (sensitive)
+uploads/
+uploads/*
+!uploads/.gitkeep
+processed/
+processed/*
+!processed/.gitkeep
+backend/uploads/
+backend/uploads/*
+backend/processed/
+backend/processed/*
+master/
+master/*
+!master/.gitkeep
+
+# Additional sensitive files
+*.SubscriberInfo.html
+work-*/
+runs/
+logs/*.csv
+logs/*.txt
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Render deployment (if using)
+.render/
+
+# Docker
+docker-compose.override.yml
+
+# Secret files (if any)
+secrets/
+*.pem
+*.key
+*.crt
+
+# Keep structure but ignore content
+!**/.gitkeep
+
