@@ -1,18 +1,21 @@
 services:
   - type: web
-    name: police-intel-backend
+    name: ipdr-tracking-hub-api
     env: python
+    runtime: python-3.11.9
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
         sync: false
-      - key: JWT_SECRET
+      - key: JWT_SECRET_KEY
         generateValue: true
+      - key: INFOBYIP_API_KEY
+        sync: false
       - key: ALLOWED_ORIGINS
-        value: https://your-frontend.onrender.com
+        value: https://ipdr-tracking-hub.onrender.com
       - key: ENVIRONMENT
         value: production
       - key: PYTHON_VERSION
-        value: 3.11
+        value: 3.11.9
 
