@@ -53,6 +53,27 @@ onMounted(async () => {
   }
 })
 
+// Function to generate SVG path for trend line
+const getTrendPath = (data: number[]) => {
+  if (!data || data.length === 0) return ''
+  
+  const width = 64
+  const height = 48
+  const padding = 4
+  
+  const max = Math.max(...data)
+  const min = Math.min(...data)
+  const range = max - min || 1
+  
+  const points = data.map((value, index) => {
+    const x = (index / (data.length - 1)) * (width - padding * 2) + padding
+    const y = height - padding - ((value - min) / range) * (height - padding * 2)
+    return `${x},${y}`
+  })
+  
+  return `M ${points.join(' L ')}`
+}
+
 const statCards = computed(() => [
   {
     icon: GlobeAltIcon,
