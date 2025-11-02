@@ -29,6 +29,7 @@ class SignupRequest(BaseModel):
     department: Optional[str] = "Delhi Police Cyber Cell"
     designation: Optional[str] = None
     phone_number: Optional[str] = None
+    role: Optional[str] = "investigator"  # Default role
 
 
 class LoginRequest(BaseModel):
@@ -109,7 +110,7 @@ async def signup(
         email=request.email,
         password=request.password,
         full_name=request.full_name,
-        role="investigator"  # Default role
+        role=request.role or "investigator"  # Use provided role or default
     )
     
     if not user:
