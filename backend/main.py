@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import upload, process, data, auth, tracking, ip_lookup
+from routers import upload, process, data, auth, tracking, ip_lookup, auth_secure, fir_management
 from core.config import ALLOWED_ORIGINS, ENVIRONMENT
 from core.db import test_connection
 import logging
@@ -31,12 +31,13 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(upload.router, prefix="/api/upload", tags=["Upload"])
-app.include_router(process.router, prefix="/api/process", tags=["Process"])
-app.include_router(data.router, prefix="/api/data", tags=["Data"])
-app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-app.include_router(tracking.router, prefix="/api/tracking", tags=["User Tracking"])
-app.include_router(ip_lookup.router, prefix="/api/lookup", tags=["IP Lookup"])
+app.include_router(auth_secure.router, prefix="/api/auth", tags=["🔐 Authentication"])
+app.include_router(fir_management.router, prefix="/api/fir", tags=["📁 FIR Management"])
+app.include_router(upload.router, prefix="/api/upload", tags=["📤 Upload"])
+app.include_router(process.router, prefix="/api/process", tags=["⚙️ Process"])
+app.include_router(data.router, prefix="/api/data", tags=["📊 Data"])
+app.include_router(tracking.router, prefix="/api/tracking", tags=["👤 User Tracking"])
+app.include_router(ip_lookup.router, prefix="/api", tags=["🔍 IP Lookup"])
 
 @app.on_event("startup")
 async def startup_event():

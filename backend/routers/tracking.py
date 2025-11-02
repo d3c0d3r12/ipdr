@@ -14,7 +14,7 @@ import httpx
 from user_agents import parse
 
 from core.db import get_db
-from models.user_session import UserSession, UserActivity, PageView
+from models.user_auth import UserSession, UserActivity
 
 router = APIRouter()
 
@@ -249,35 +249,15 @@ async def log_activity(
         raise HTTPException(status_code=500, detail=f"Error logging activity: {str(e)}")
 
 
-@router.post("/pageview/log")
-async def log_pageview(
-    pageview: PageViewCreate,
-    db: Session = Depends(get_db)
-):
-    """Log a page view"""
-    try:
-        # Update session last activity
-        session = db.query(UserSession).filter(UserSession.session_id == pageview.session_id).first()
-        if session:
-            session.last_activity = datetime.utcnow()
-        
-        # Create page view record
-        new_pageview = PageView(
-            session_id=pageview.session_id,
-            page_url=pageview.page_url,
-            page_title=pageview.page_title,
-            page_path=pageview.page_path,
-            previous_page=pageview.previous_page
-        )
-        
-        db.add(new_pageview)
-        db.commit()
-        
-        return {"message": "Page view logged successfully"}
-        
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error logging page view: {str(e)}")
+# Commented out - PageView model not in new schema
+# @router.post("/pageview/log")
+# async def log_pageview(
+#     pageview: PageViewCreate,
+#     db: Session = Depends(get_db)
+# ):
+#     """Log a page view"""
+#     # Use UserActivity instead for page tracking
+#     return {"message": "Use /activity/log endpoint for page tracking"}
 
 
 @router.get("/sessions/active")

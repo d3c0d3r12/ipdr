@@ -1,0 +1,29 @@
+# Additional requirements for authentication and user tracking
+
+# JWT and security
+PyJWT==2.8.0
+python-multipart==0.0.6
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.2
+
+# User agent parsing
+user-agents==2.2.0
+ua-parser==0.18.0
+
+# IP geolocation (optional - for user tracking)
+geoip2==4.7.0
+maxminddb==2.5.1
+
+# Rate limiting
+slowapi==0.1.9
+
+# Session management
+itsdangerous==2.1.2
+
+# Already in main requirements but listing for completeness:
+# fastapi
+# sqlalchemy
+# psycopg2-binary
+# uvicorn
+# pydantic
