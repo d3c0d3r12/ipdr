@@ -85,9 +85,9 @@
             <div class="card-content">
               <h3>CSV Results</h3>
               <p>{{ results.csv }}</p>
-              <a :href="results.csv" download class="btn-download-small">
+              <button @click="downloadFile(results.csv, 'ip_lookup_results.csv')" class="btn-download-small">
                 💾 Download CSV
-              </a>
+              </button>
             </div>
           </div>
           <div class="result-card">
@@ -95,10 +95,36 @@
             <div class="card-content">
               <h3>JSON Results</h3>
               <p>{{ results.json }}</p>
-              <a :href="results.json" download class="btn-download-small">
+              <button @click="downloadFile(results.json, 'ip_lookup_results.json')" class="btn-download-small">
                 💾 Download JSON
-              </a>
+              </button>
             </div>
+          </div>
+        </div>
+        
+        <!-- Master File Section -->
+        <div class="master-file-section">
+          <h3>🎯 Create Master File</h3>
+          <p>Merge original_log.csv with IP lookup results to create a comprehensive Master file</p>
+          <button 
+            @click="createMasterFile" 
+            :disabled="mergingMaster"
+            class="btn-create-master"
+          >
+            {{ mergingMaster ? '⏳ Creating Master File...' : '✨ Create Master File.csv' }}
+          </button>
+          
+          <div v-if="masterFile" class="master-result">
+            <div class="success-message">
+              ✅ Master file created successfully!
+            </div>
+            <div class="master-info">
+              <p><strong>Total Records:</strong> {{ masterFile.total_records }}</p>
+              <p><strong>Columns:</strong> {{ masterFile.columns.join(', ') }}</p>
+            </div>
+            <button @click="downloadFile(masterFile.master_file, 'Master file.csv')" class="btn-download-master">
+              💾 Download Master File.csv
+            </button>
           </div>
         </div>
       </div>
@@ -116,6 +142,8 @@ const selectedRunDir = ref('')
 const autoStart = ref(false)
 const results = ref(null)
 const recentRuns = ref([])
+const mergingMaster = ref(false)
+const masterFile = ref(null)
 
 // Methods
 const loadRunDirectory = async () => {
@@ -126,7 +154,7 @@ const loadRunDirectory = async () => {
 
   try {
     // Verify the directory has original_log.csv
-    const response = await fetch(`/api/lookup/status?run_dir=${encodeURIComponent(runDirInput.value)}`)
+    const response = await fetch(`http://localhost:8000/api/lookup/status?run_dir=${encodeURIComponent(runDirInput.value)}`)
     
     if (!response.ok) {
       throw new Error('Directory not found or invalid')
@@ -160,9 +188,44 @@ const changeDirectory = () => {
   results.value = null
 }
 
-const onLookupComplete = (data) => {
+const onLookupComplete = async (data) => {
   results.value = data
   console.log('Lookup complete:', data)
+  
+  // Auto-store results in database if FIR number is provided
+  const urlParams = new URLSearchParams(window.location.search)
+  const firNumber = urlParams.get('fir_number')
+  
+  if (firNumber && data.csv) {
+    try {
+      console.log('Auto-storing results for FIR:', firNumber)
+      
+      // Fetch the CSV file
+      const csvResponse = await fetch(`http://localhost:8000${data.csv}`)
+      const csvBlob = await csvResponse.blob()
+      const csvFile = new File([csvBlob], 'ip_lookup_results.csv', { type: 'text/csv' })
+      
+      // Upload to FIR database
+      const formData = new FormData()
+      formData.append('file', csvFile)
+      
+      const storeResponse = await fetch(`http://localhost:8000/api/fir/store-ip-results/${encodeURIComponent(firNumber)}`, {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (storeResponse.ok) {
+        const result = await storeResponse.json()
+        alert(`✅ Success! ${result.ips_stored} IPs automatically stored in database for ${firNumber}`)
+        console.log('Auto-store successful:', result)
+      } else {
+        console.error('Auto-store failed:', await storeResponse.text())
+      }
+    } catch (error) {
+      console.error('Error auto-storing results:', error)
+      // Don't show error to user - they can still download manually
+    }
+  }
 }
 
 const onLookupError = (error) => {
@@ -193,6 +256,78 @@ const loadRecentRuns = () => {
   recentRuns.value = recent
 }
 
+const downloadFile = async (filePath, fileName) => {
+  try {
+    console.log('Downloading file:', filePath)
+    
+    // Build full URL
+    const url = `http://localhost:8000${filePath}`
+    console.log('Full URL:', url)
+    
+    // Fetch the file
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`Failed to download: ${response.status}`)
+    }
+    
+    // Get the blob
+    const blob = await response.blob()
+    console.log('Blob size:', blob.size)
+    
+    // Create download link
+    const downloadUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    // Clean up
+    window.URL.revokeObjectURL(downloadUrl)
+    
+    console.log('✅ Download initiated:', fileName)
+  } catch (error) {
+    console.error('Download error:', error)
+    alert(`Failed to download file: ${error.message}`)
+  }
+}
+
+const createMasterFile = async () => {
+  if (!selectedRunDir.value) {
+    alert('No run directory selected')
+    return
+  }
+  
+  mergingMaster.value = true
+  masterFile.value = null
+  
+  try {
+    console.log('Creating master file for:', selectedRunDir.value)
+    
+    const response = await fetch(`http://localhost:8000/api/lookup/merge?run_dir=${encodeURIComponent(selectedRunDir.value)}`, {
+      method: 'POST'
+    })
+    
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to create master file')
+    }
+    
+    const data = await response.json()
+    console.log('Master file created:', data)
+    
+    masterFile.value = data
+    alert(`✅ Master file created successfully!\n${data.total_records} records merged`)
+    
+  } catch (error) {
+    console.error('Master file error:', error)
+    alert(`Failed to create master file: ${error.message}`)
+  } finally {
+    mergingMaster.value = false
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   loadRecentRuns()
@@ -202,8 +337,15 @@ onMounted(() => {
   const runDir = urlParams.get('run_dir')
   if (runDir) {
     runDirInput.value = runDir
-    loadRunDirectory()
+    // Automatically load and start without user interaction
+    selectedRunDir.value = runDir
     autoStart.value = urlParams.get('auto_start') === 'true'
+    
+    // Save to recent runs
+    saveToRecentRuns(runDir, {
+      total_ips: 0,
+      has_results: false
+    })
   }
 })
 </script>
@@ -504,11 +646,109 @@ onMounted(() => {
   color: #0f0;
   text-decoration: none;
   font-size: 12px;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
   transition: all 0.3s;
 }
 
 .btn-download-small:hover {
   background: #0f0;
   color: #000;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+/* Master File Section */
+.master-file-section {
+  margin-top: 24px;
+  padding: 24px;
+  background: rgba(0, 255, 255, 0.05);
+  border: 2px solid #0ff;
+  border-radius: 8px;
+}
+
+.master-file-section h3 {
+  margin: 0 0 8px;
+  color: #0ff;
+  font-size: 20px;
+}
+
+.master-file-section p {
+  margin: 0 0 16px;
+  color: #999;
+  font-size: 14px;
+}
+
+.btn-create-master {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #0ff 0%, #0f0 100%);
+  border: none;
+  border-radius: 8px;
+  color: #000;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+}
+
+.btn-create-master:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+}
+
+.btn-create-master:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.master-result {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(0, 255, 0, 0.05);
+  border: 1px solid #0f0;
+  border-radius: 8px;
+}
+
+.success-message {
+  color: #0f0;
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.master-info {
+  margin-bottom: 16px;
+}
+
+.master-info p {
+  margin: 4px 0;
+  color: #0ff;
+  font-size: 14px;
+}
+
+.master-info strong {
+  color: #0f0;
+}
+
+.btn-download-master {
+  width: 100%;
+  padding: 12px;
+  background: #000;
+  border: 2px solid #0f0;
+  border-radius: 4px;
+  color: #0f0;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-download-master:hover {
+  background: #0f0;
+  color: #000;
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
 }
 </style>

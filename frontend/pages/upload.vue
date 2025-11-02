@@ -12,6 +12,8 @@ const bypassCloudflare = ref(false)
 const message = ref('')
 const runDir = ref('')
 const uploading = ref(false)
+const status = ref<any>(null)
+let pollTimer: any = null
 
 function onChange(e: Event) {
   const target = e.target as HTMLInputElement
@@ -19,8 +21,11 @@ function onChange(e: Event) {
 }
 
 async function uploadFile() {
+  console.log('Upload button clicked')
+  
   if (!file.value || !firNo.value) {
     message.value = 'FIR number and file are required'
+    alert('Please enter FIR number and select a file')
     return
   }
   
@@ -33,40 +38,79 @@ async function uploadFile() {
   formData.append('preserve_duplicates', preserveDuplicates.value.toString())
   formData.append('bypass_cloudflare', bypassCloudflare.value.toString())
   
+  console.log('Uploading to:', `${apiBase}/api/upload/`)
+  console.log('FIR:', firNo.value)
+  console.log('File:', file.value.name)
+  console.log('Bypass Cloudflare:', bypassCloudflare.value)
+  
   try {
     const response = await fetch(`${apiBase}/api/upload/`, {
       method: 'POST',
       body: formData
     })
     
+    console.log('Response status:', response.status)
+    
     if (!response.ok) {
-      throw new Error('Upload failed')
+      const errorText = await response.text()
+      console.error('Upload failed:', errorText)
+      throw new Error(`Upload failed: ${response.status} ${errorText}`)
     }
     
     const data = await response.json()
+    console.log('✅ Upload response:', data)
+    
     runDir.value = data.run_dir
     message.value = `File uploaded successfully! Rows: ${data.count_rows}, Unique IPs: ${data.unique_ips}`
     
-    // Auto-redirect to IP lookup if Cloudflare bypass is enabled
-    if (bypassCloudflare.value && data.unique_ips > 0) {
+    // ALWAYS auto-redirect to IP lookup page
+    console.log('🔍 Checking redirect conditions...')
+    console.log('  - run_dir:', data.run_dir)
+    console.log('  - unique_ips:', data.unique_ips)
+    console.log('  - firNo:', firNo.value)
+    
+    if (data.run_dir && data.unique_ips > 0) {
       message.value += ' - Redirecting to IP Lookup...'
+      console.log('✅ Redirect conditions met!')
+      
+      const url = `/ip-lookup?run_dir=${encodeURIComponent(data.run_dir)}&fir_number=${encodeURIComponent(firNo.value)}&auto_start=${bypassCloudflare.value}`
+      console.log('🚀 Redirecting to:', url)
+      
+      // Simple redirect with small delay
       setTimeout(() => {
-        router.push(`/ip-lookup?run_dir=${encodeURIComponent(data.run_dir)}&auto_start=true`)
-      }, 2000)
+        console.log('⏰ Executing redirect now...')
+        router.push(url)
+        console.log('✅ router.push executed')
+      }, 500)
+    } else {
+      console.error('❌ Redirect conditions NOT met!')
+      console.error('  - run_dir:', data.run_dir, '(should be truthy)')
+      console.error('  - unique_ips:', data.unique_ips, '(should be > 0)')
+      alert('Upload succeeded but cannot redirect. Please click "Start Unlimited IP Lookup" button.')
     }
   } catch (error: any) {
+    console.error('Upload error:', error)
     message.value = error?.message || 'Upload failed'
+    alert(`Upload error: ${error?.message || 'Upload failed'}`)
   } finally {
     uploading.value = false
   }
 }
 
 function startIPLookup() {
+  console.log('Start IP Lookup button clicked')
+  console.log('Run Dir:', runDir.value)
+  console.log('FIR No:', firNo.value)
+  
   if (!runDir.value) {
     message.value = 'Please upload a file first'
+    alert('Please upload a file first')
     return
   }
-  router.push(`/ip-lookup?run_dir=${encodeURIComponent(runDir.value)}&auto_start=true`)
+  
+  const url = `/ip-lookup?run_dir=${encodeURIComponent(runDir.value)}&fir_number=${encodeURIComponent(firNo.value)}&auto_start=true`
+  console.log('Navigating to:', url)
+  router.push(url)
 }
 
 async function processBatches() {

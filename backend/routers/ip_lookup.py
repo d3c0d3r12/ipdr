@@ -4,13 +4,15 @@ Handles unlimited IP lookups with Cloudflare bypass and real-time progress strea
 """
 
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from pathlib import Path
 from typing import List, Dict, Any
 import csv
 import json
 import asyncio
 from datetime import datetime
+from bs4 import BeautifulSoup
+import pandas as pd
 
 # Import the enhanced bypass system
 import sys
@@ -18,6 +20,68 @@ sys.path.append(str(Path(__file__).parent.parent))
 from utils.enhanced_cloudflare_bypass import EnhancedCloudflareBypass
 
 router = APIRouter()
+
+
+def parse_ip_data(html: str, ip: str) -> dict:
+    """
+    Parse InfoByIP HTML and extract all data
+    
+    Args:
+        html: HTML content
+        ip: IP address
+        
+    Returns:
+        Dictionary with IP data
+    """
+    soup = BeautifulSoup(html, 'html.parser')
+    
+    data = {
+        'ip': ip,
+        'country': 'Unknown',
+        'city': 'Unknown',
+        'region': 'Unknown',
+        'isp': 'Unknown',
+        'organization': 'Unknown',
+        'latitude': 'Unknown',
+        'longitude': 'Unknown',
+        'timezone': 'Unknown',
+        'postal_code': 'Unknown'
+    }
+    
+    try:
+        # Find all table rows
+        rows = soup.find_all('tr')
+        
+        for row in rows:
+            cells = row.find_all('td')
+            if len(cells) >= 2:
+                label = cells[0].get_text().strip().lower()
+                value = cells[1].get_text().strip()
+                
+                # Map labels to data fields
+                if 'country' in label:
+                    data['country'] = value
+                elif 'city' in label:
+                    data['city'] = value
+                elif 'region' in label or 'state' in label:
+                    data['region'] = value
+                elif 'isp' in label:
+                    data['isp'] = value
+                elif 'organization' in label:
+                    data['organization'] = value
+                elif 'latitude' in label:
+                    data['latitude'] = value
+                elif 'longitude' in label:
+                    data['longitude'] = value
+                elif 'time zone' in label or 'timezone' in label:
+                    data['timezone'] = value
+                elif 'postal' in label or 'zip' in label:
+                    data['postal_code'] = value
+    
+    except Exception as e:
+        print(f"⚠️  Parse error for {ip}: {e}")
+    
+    return data
 
 
 def extract_ips_from_csv(csv_path: Path) -> List[str]:
@@ -69,33 +133,60 @@ async def progress_generator(run_dir: Path, csv_path: Path):
         
         bypass = EnhancedCloudflareBypass(
             headless=True,
-            cookies_file=str(run_dir / 'unlimited_lookup_cookies.json')
+            cookie_file=str(run_dir / 'unlimited_lookup_cookies.json')
         )
         
         yield f"data: {json.dumps({'type': 'status', 'message': '🌐 Starting browser session...', 'progress': 10})}\n\n"
         await asyncio.sleep(0.3)
+        
+        # Initialize browser and solve Cloudflare challenge with first IP
+        yield f"data: {json.dumps({'type': 'status', 'message': '🔓 Solving Cloudflare challenge...', 'progress': 15})}\n\n"
+        await asyncio.sleep(0.3)
+        
+        # Try first IP to initialize and solve challenge
+        if ips:
+            try:
+                first_url = f"https://www.infobyip.com/ip-{ips[0]}.html"
+                first_html = bypass.bypass_and_fetch(first_url)
+                if first_html:
+                    yield f"data: {json.dumps({'type': 'success', 'message': '✅ Cloudflare bypass successful!', 'progress': 20})}\n\n"
+                else:
+                    yield f"data: {json.dumps({'type': 'warning', 'message': '⚠️  First lookup returned no data, continuing...', 'progress': 20})}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'warning', 'message': f'⚠️  Challenge solve attempt: {str(e)}', 'progress': 20})}\n\n"
+            await asyncio.sleep(0.5)
         
         # Process IPs
         results = []
         start_time = datetime.now()
         
         for idx, ip in enumerate(ips, 1):
-            progress = 10 + int((idx / total_ips) * 85)  # 10% to 95%
+            progress = 20 + int((idx / total_ips) * 75)  # 20% to 95%
             
             yield f"data: {json.dumps({'type': 'progress', 'message': f'🔎 Looking up IP {idx}/{total_ips}: {ip}', 'current': idx, 'total': total_ips, 'progress': progress, 'ip': ip})}\n\n"
             
             try:
-                # Perform lookup
-                result = bypass.bypass_and_fetch(ip)
+                # Build InfoByIP URL
+                url = f"https://www.infobyip.com/ip-{ip}.html"
                 
-                if result:
+                # Fetch HTML
+                html = bypass.bypass_and_fetch(url)
+                
+                if html:
+                    # Parse HTML to extract data
+                    result = parse_ip_data(html, ip)
                     results.append(result)
-                    yield f"data: {json.dumps({'type': 'success', 'message': f'✅ {ip} → {result.get(\"city\", \"Unknown\")}, {result.get(\"country\", \"Unknown\")}', 'ip': ip, 'result': result})}\n\n"
+                    city = result.get("city", "Unknown")
+                    country = result.get("country", "Unknown")
+                    message = f'✅ {ip} → {city}, {country}'
+                    yield f"data: {json.dumps({'type': 'success', 'message': message, 'ip': ip, 'result': result})}\n\n"
                 else:
-                    yield f"data: {json.dumps({'type': 'warning', 'message': f'⚠️  {ip} → No data returned', 'ip': ip})}\n\n"
+                    message = f'⚠️  {ip} → No data returned'
+                    yield f"data: {json.dumps({'type': 'warning', 'message': message, 'ip': ip})}\n\n"
                 
             except Exception as e:
-                yield f"data: {json.dumps({'type': 'error', 'message': f'❌ {ip} → Error: {str(e)}', 'ip': ip, 'error': str(e)})}\n\n"
+                error_msg = f'❌ {ip} → Error: {str(e)}'
+                yield f"data: {json.dumps({'type': 'error', 'message': error_msg, 'ip': ip, 'error': str(e)})}\n\n"
             
             await asyncio.sleep(0.1)  # Small delay for UI updates
         
@@ -122,7 +213,11 @@ async def progress_generator(run_dir: Path, csv_path: Path):
         elapsed_time = (datetime.now() - start_time).total_seconds() / 60
         success_rate = (len(results) / total_ips * 100) if total_ips > 0 else 0
         
-        yield f"data: {json.dumps({'type': 'complete', 'message': f'🎉 Lookup complete! {len(results)}/{total_ips} IPs processed ({success_rate:.1f}% success)', 'progress': 100, 'total': total_ips, 'success': len(results), 'elapsed_minutes': elapsed_time, 'csv_path': str(csv_output), 'json_path': str(json_output)})}\n\n"
+        # Convert file paths to URL paths
+        csv_url = f"/api/files/{run_dir.name}/{csv_output.name}"
+        json_url = f"/api/files/{run_dir.name}/{json_output.name}"
+        
+        yield f"data: {json.dumps({'type': 'complete', 'message': f'🎉 Lookup complete! {len(results)}/{total_ips} IPs processed ({success_rate:.1f}% success)', 'progress': 100, 'total': total_ips, 'success': len(results), 'elapsed_minutes': elapsed_time, 'csv_path': csv_url, 'json_path': json_url})}\n\n"
         
     except Exception as e:
         yield f"data: {json.dumps({'type': 'error', 'message': f'❌ Fatal error: {str(e)}', 'error': str(e)})}\n\n"
@@ -248,3 +343,93 @@ async def get_lookup_status(run_dir: str = Query(...)):
         "csv_path": str(csv_results) if csv_results.exists() else None,
         "json_path": str(json_results) if json_results.exists() else None
     }
+
+
+@router.post("/lookup/merge")
+async def merge_master_file(run_dir: str = Query(..., description="Run directory path")):
+    """
+    Merge original_log.csv and ip_lookup_results.csv into Master file.csv
+    
+    Combines timestamp and IP from original_log.csv with lookup data from ip_lookup_results.csv
+    Output columns: timestamp, ip, country, city, region, isp
+    """
+    run_path = Path(run_dir)
+    
+    if not run_path.exists():
+        raise HTTPException(status_code=404, detail=f"Run directory not found: {run_dir}")
+    
+    original_csv = run_path / 'original_log.csv'
+    lookup_csv = run_path / 'ip_lookup_results.csv'
+    
+    if not original_csv.exists():
+        raise HTTPException(status_code=404, detail="original_log.csv not found")
+    
+    if not lookup_csv.exists():
+        raise HTTPException(status_code=404, detail="ip_lookup_results.csv not found. Please complete IP lookup first.")
+    
+    try:
+        # Read both CSV files
+        df_original = pd.read_csv(original_csv)
+        df_lookup = pd.read_csv(lookup_csv)
+        
+        # Ensure required columns exist
+        if 'ip' not in df_original.columns or 'timestamp' not in df_original.columns:
+            raise HTTPException(status_code=400, detail="original_log.csv must have 'ip' and 'timestamp' columns")
+        
+        if 'ip' not in df_lookup.columns:
+            raise HTTPException(status_code=400, detail="ip_lookup_results.csv must have 'ip' column")
+        
+        # Merge on IP address
+        df_merged = df_original.merge(
+            df_lookup[['ip', 'country', 'city', 'region', 'isp']], 
+            on='ip', 
+            how='left'
+        )
+        
+        # Select only required columns
+        df_master = df_merged[['timestamp', 'ip', 'country', 'city', 'region', 'isp']]
+        
+        # Fill missing values with 'Unknown'
+        df_master = df_master.fillna('Unknown')
+        
+        # Save to Master file.csv
+        master_file = run_path / 'Master file.csv'
+        df_master.to_csv(master_file, index=False, encoding='utf-8')
+        
+        return {
+            "success": True,
+            "message": "Master file created successfully",
+            "master_file": f"/api/files/{run_path.name}/Master file.csv",
+            "total_records": len(df_master),
+            "columns": list(df_master.columns),
+            "sample_data": df_master.head(3).to_dict('records')
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error merging files: {str(e)}")
+
+
+@router.get("/files/{run_dir}/{filename}")
+async def download_file(run_dir: str, filename: str):
+    """
+    Download a file from a run directory
+    
+    Serves files like:
+    - ip_lookup_results.csv
+    - ip_lookup_results.json
+    - Master file.csv
+    """
+    # Build absolute file path
+    base_dir = Path(__file__).parent.parent  # backend directory
+    file_path = base_dir / "processed" / run_dir / filename
+    
+    # Check if file exists
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"File not found: {filename} in {run_dir}")
+    
+    # Return file
+    return FileResponse(
+        path=str(file_path),
+        filename=filename,
+        media_type='application/octet-stream'
+    )
