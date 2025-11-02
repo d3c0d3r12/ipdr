@@ -67,6 +67,13 @@ runs/
 logs/*.csv
 logs/*.txt
 
+# IP Lookup Results (sensitive data - DO NOT COMMIT)
+ip_lookup_results.csv
+ip_lookup_results.json
+unlimited_lookup_cookies.json
+ips.txt
+*.ips.txt
+
 # Database
 *.db
 *.sqlite

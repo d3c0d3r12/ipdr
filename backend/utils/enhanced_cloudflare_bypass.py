@@ -594,7 +594,19 @@ class EnhancedCloudflareBypass:
                 
             except Exception as e:
                 self.fail_count += 1
+                error_msg = str(e)
                 self.log(f"Attempt {attempt + 1} failed: {e}", "ERROR")
+                
+                # Check if browser session crashed
+                if "invalid session id" in error_msg or "session deleted" in error_msg:
+                    self.log("Browser session crashed - restarting browser...", "WARNING")
+                    try:
+                        if self.driver:
+                            self.driver.quit()
+                    except:
+                        pass
+                    self.driver = None
+                    self.log("Browser closed, will reinitialize on next attempt", "INFO")
                 
                 if attempt < self.max_retries - 1:
                     wait_time = (attempt + 1) * 2
