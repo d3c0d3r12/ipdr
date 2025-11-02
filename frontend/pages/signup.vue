@@ -449,6 +449,28 @@ const handleSignup = async () => {
   transition: all 0.3s ease;
 }
 
+.form-group select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2300ffff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+}
+
+.form-group select option {
+  background: #1a1a2e;
+  color: #ffffff;
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+.form-group select option:hover,
+.form-group select option:checked {
+  background: #00ffff;
+  color: #000000;
+}
+
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
