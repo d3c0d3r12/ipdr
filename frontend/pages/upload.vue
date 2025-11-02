@@ -45,11 +45,27 @@ async function uploadFile() {
     const data = await response.json()
     runDir.value = data.run_dir
     message.value = `File uploaded successfully! Rows: ${data.count_rows}, Unique IPs: ${data.unique_ips}`
+    
+    // Auto-redirect to IP lookup if Cloudflare bypass is enabled
+    if (bypassCloudflare.value && data.unique_ips > 0) {
+      message.value += ' - Redirecting to IP Lookup...'
+      setTimeout(() => {
+        navigateTo(`/ip-lookup?run_dir=${encodeURIComponent(data.run_dir)}&auto_start=true`)
+      }, 2000)
+    }
   } catch (error: any) {
     message.value = error?.message || 'Upload failed'
   } finally {
     uploading.value = false
   }
+}
+
+function startIPLookup() {
+  if (!runDir.value) {
+    message.value = 'Please upload a file first'
+    return
+  }
+  navigateTo(`/ip-lookup?run_dir=${encodeURIComponent(runDir.value)}&auto_start=true`)
 }
 
 async function processBatches() {
@@ -174,7 +190,21 @@ function startPolling() {
           
           <div v-if="runDir" class="p-4 bg-slate-900 border border-green-700 rounded">
             <p class="text-sm text-green-400 font-medium mb-2">✓ Upload Successful</p>
-            <p class="text-xs text-slate-400">Run Directory: {{ runDir }}</p>
+            <p class="text-xs text-slate-400 mb-3">Run Directory: {{ runDir }}</p>
+            
+            <!-- IP Lookup Button -->
+            <button 
+              @click="startIPLookup"
+              class="w-full px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded font-medium transition flex items-center justify-center space-x-2"
+            >
+              <span>🔍</span>
+              <span>Start Unlimited IP Lookup</span>
+              <span class="px-2 py-0.5 bg-white/20 text-xs rounded-full">NEW</span>
+            </button>
+            
+            <p class="text-xs text-green-300 mt-2 text-center">
+              ⚡ Real-time progress • 🎯 Hacker terminal UI • 🚀 Auto-bypass Cloudflare
+            </p>
           </div>
         </div>
         
