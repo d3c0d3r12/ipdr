@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRuntimeConfig } from '#app'
+import { useRuntimeConfig, useRouter } from '#app'
 
 const config = useRuntimeConfig()
+const router = useRouter()
 const apiBase = config.public.apiBase || 'http://localhost:8000'
 const firNo = ref('')
 const file = ref<File | null>(null)
@@ -50,7 +51,7 @@ async function uploadFile() {
     if (bypassCloudflare.value && data.unique_ips > 0) {
       message.value += ' - Redirecting to IP Lookup...'
       setTimeout(() => {
-        navigateTo(`/ip-lookup?run_dir=${encodeURIComponent(data.run_dir)}&auto_start=true`)
+        router.push(`/ip-lookup?run_dir=${encodeURIComponent(data.run_dir)}&auto_start=true`)
       }, 2000)
     }
   } catch (error: any) {
@@ -65,7 +66,7 @@ function startIPLookup() {
     message.value = 'Please upload a file first'
     return
   }
-  navigateTo(`/ip-lookup?run_dir=${encodeURIComponent(runDir.value)}&auto_start=true`)
+  router.push(`/ip-lookup?run_dir=${encodeURIComponent(runDir.value)}&auto_start=true`)
 }
 
 async function processBatches() {
