@@ -60,20 +60,24 @@ async function uploadFile() {
     const data = await response.json()
     console.log('✅ Upload response:', data)
     
-    runDir.value = data.run_dir
+    // Normalize path to use forward slashes (Windows compatibility)
+    const normalizedRunDir = data.run_dir.replace(/\\/g, '/')
+    console.log('📁 Normalized run_dir:', normalizedRunDir)
+    
+    runDir.value = normalizedRunDir
     message.value = `File uploaded successfully! Rows: ${data.count_rows}, Unique IPs: ${data.unique_ips}`
     
     // ALWAYS auto-redirect to IP lookup page
     console.log('🔍 Checking redirect conditions...')
-    console.log('  - run_dir:', data.run_dir)
+    console.log('  - run_dir:', normalizedRunDir)
     console.log('  - unique_ips:', data.unique_ips)
     console.log('  - firNo:', firNo.value)
     
-    if (data.run_dir && data.unique_ips > 0) {
+    if (normalizedRunDir && data.unique_ips > 0) {
       message.value += ' - Redirecting to IP Lookup...'
       console.log('✅ Redirect conditions met!')
       
-      const url = `/ip-lookup?run_dir=${encodeURIComponent(data.run_dir)}&fir_number=${encodeURIComponent(firNo.value)}&auto_start=true`
+      const url = `/ip-lookup?run_dir=${encodeURIComponent(normalizedRunDir)}&fir_number=${encodeURIComponent(firNo.value)}&auto_start=true`
       console.log('🚀 Redirecting to:', url)
       
       // Simple redirect with small delay

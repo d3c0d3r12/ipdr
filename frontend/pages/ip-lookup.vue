@@ -353,34 +353,59 @@ onMounted(async () => {
     runDirInput.value = runDir
     autoStart.value = shouldAutoStart
     
-    // Verify directory exists and has IPs
-    try {
-      const config = useRuntimeConfig()
-      const apiBase = config.public.apiBase
-      console.log('🔍 Verifying directory:', runDir)
-      
-      const response = await fetch(`${apiBase}/api/lookup/status?run_dir=${encodeURIComponent(runDir)}`)
-      
-      if (response.ok) {
-        const data = await response.json()
-        console.log('✅ Directory verified:', data)
+    // Verify directory exists with retry logic (directory might not be created immediately)
+    const maxRetries = 5
+    let retryCount = 0
+    
+    while (retryCount < maxRetries) {
+      try {
+        const config = useRuntimeConfig()
+        const apiBase = config.public.apiBase
+        console.log(`🔍 Verifying directory (attempt ${retryCount + 1}/${maxRetries}):`, runDir)
         
-        if (data.total_ips > 0) {
-          selectedRunDir.value = runDir
-          saveToRecentRuns(runDir, data)
-          console.log('✅ Auto-start enabled:', shouldAutoStart)
+        const response = await fetch(`${apiBase}/api/lookup/status?run_dir=${encodeURIComponent(runDir)}`)
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log('✅ Directory verified:', data)
+          
+          if (data.total_ips > 0) {
+            selectedRunDir.value = runDir
+            saveToRecentRuns(runDir, data)
+            console.log('✅ Auto-start enabled:', shouldAutoStart)
+            break // Success!
+          } else {
+            console.error('❌ No IPs found in directory')
+            alert('No IPs found in the uploaded file. Please check your HTML file.')
+            break
+          }
+        } else if (response.status === 404) {
+          // Directory not found, retry
+          console.warn(`⚠️ Directory not found yet (attempt ${retryCount + 1}/${maxRetries}), retrying in 1 second...`)
+          retryCount++
+          if (retryCount < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 1000))
+          } else {
+            console.error('❌ Directory not found after all retries')
+            alert('Could not find the uploaded directory. The file might still be processing. Please wait a moment and try refreshing.')
+          }
         } else {
-          console.error('❌ No IPs found in directory')
-          alert('No IPs found in the uploaded file. Please check your HTML file.')
+          console.error('❌ Directory verification failed:', response.status)
+          alert('Could not verify the uploaded directory. Please try again.')
+          break
         }
-      } else {
-        console.error('❌ Directory verification failed:', response.status)
-        alert('Could not verify the uploaded directory. Please try again.')
+      } catch (error) {
+        console.error(`❌ Error verifying directory (attempt ${retryCount + 1}):`, error)
+        retryCount++
+        if (retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        } else {
+          // Fallback: still try to load it
+          console.warn('⚠️ Using fallback: setting directory without verification')
+          selectedRunDir.value = runDir
+          break
+        }
       }
-    } catch (error) {
-      console.error('❌ Error verifying directory:', error)
-      // Fallback: still try to load it
-      selectedRunDir.value = runDir
     }
   }
 })
