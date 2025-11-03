@@ -99,3 +99,9 @@ secrets/
 # Keep structure but ignore content
 !**/.gitkeep
 
+# Backup files
+*.bak
+*.old
+*_old.py
+*_backup.py
+
