@@ -23,6 +23,7 @@ try:
 except:
     SELENIUM_AVAILABLE = False
 from utils.infobyip_direct import InfoByIPDirect
+from utils.multi_source_ip_lookup import MultiSourceIPLookup
 
 router = APIRouter()
 
@@ -137,8 +138,9 @@ async def progress_generator(run_dir: Path, csv_path: Path):
         await asyncio.sleep(0.3)
         
         infobyip = InfoByIPDirect()
+        multi_lookup = MultiSourceIPLookup()
         
-        yield f"data: {json.dumps({'type': 'status', 'message': '🌐 Connecting to InfoByIP...', 'progress': 10})}\n\n"
+        yield f"data: {json.dumps({'type': 'status', 'message': '🌐 Connecting to InfoByIP + Fallback sources...', 'progress': 10})}\n\n"
         await asyncio.sleep(0.3)
         
         # Test with first IP
@@ -166,34 +168,27 @@ async def progress_generator(run_dir: Path, csv_path: Path):
             yield f"data: {json.dumps({'type': 'progress', 'message': f'🔎 Looking up IP {idx}/{total_ips}: {ip}', 'current': idx, 'total': total_ips, 'progress': progress, 'ip': ip})}\n\n"
             
             try:
-                # Use InfoByIP Direct API (same data as yesterday!)
-                result = infobyip.lookup_ip(ip)
+                # Try InfoByIP first (primary source)
+                infobyip_result = infobyip.lookup_ip(ip)
                 
-                if result and result.get('country') != 'Unknown':
-                    # Got data from InfoByIP!
-                    results.append(result)
-                    city = result.get("city", "Unknown")
-                    country = result.get("country", "Unknown")
-                    isp = result.get("isp", "Unknown")
-                    message = f'✅ {ip} → {city}, {country} | {isp}'
+                # Use multi-source fallback to GUARANTEE data
+                result = multi_lookup.lookup_with_fallback(ip, infobyip_result)
+                results.append(result)
+                
+                city = result.get("city", "Unknown")
+                country = result.get("country", "Unknown")
+                isp = result.get("isp", "Unknown")
+                source = result.get("source", "unknown")
+                
+                # Show appropriate message based on source
+                if source == "infobyip" or source == "infobyip-api" or source == "infobyip-html":
+                    message = f'✅ {ip} → {city}, {country} | {isp} [InfoByIP]'
+                    yield f"data: {json.dumps({'type': 'success', 'message': message, 'ip': ip, 'result': result})}\n\n"
+                elif source != "none":
+                    message = f'✅ {ip} → {city}, {country} | {isp} [Fallback: {source}]'
                     yield f"data: {json.dumps({'type': 'success', 'message': message, 'ip': ip, 'result': result})}\n\n"
                 else:
-                    # No data from InfoByIP (same as yesterday - some IPs don't have data)
-                    result = {
-                        'ip': ip,
-                        'country': 'Unknown',
-                        'city': 'Unknown',
-                        'region': 'Unknown',
-                        'isp': 'Unknown',
-                        'organization': 'Unknown',
-                        'latitude': 'Unknown',
-                        'longitude': 'Unknown',
-                        'timezone': 'Unknown',
-                        'postal_code': 'Unknown',
-                        'source': 'none'
-                    }
-                    results.append(result)
-                    message = f'⚠️  {ip} → No data available from InfoByIP'
+                    message = f'⚠️  {ip} → No data available from any source'
                     yield f"data: {json.dumps({'type': 'warning', 'message': message, 'ip': ip, 'result': result})}\n\n"
                 
             except Exception as e:
@@ -237,6 +232,7 @@ async def progress_generator(run_dir: Path, csv_path: Path):
         
         # Cleanup
         infobyip.close()
+        multi_lookup.close()
         
         elapsed_time = (datetime.now() - start_time).total_seconds() / 60
         success_rate = (len(results) / total_ips * 100) if total_ips > 0 else 0
