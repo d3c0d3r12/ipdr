@@ -29,6 +29,12 @@ async function uploadFile() {
     return
   }
   
+  // Show sanitized FIR number (same logic as backend)
+  const sanitizedFir = firNo.value.replace(/[^a-zA-Z0-9\-_]/g, '-').substring(0, 64) || 'FIR'
+  if (sanitizedFir !== firNo.value) {
+    console.log(`📝 FIR number will be sanitized: "${firNo.value}" → "${sanitizedFir}"`)
+  }
+  
   uploading.value = true
   message.value = 'Uploading...'
   
@@ -174,8 +180,11 @@ function startPolling() {
             <input 
               v-model="firNo" 
               class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded focus:border-blue-500 focus:outline-none" 
-              placeholder="e.g., FIR/2025/1234" 
+              placeholder="e.g., FIR/2025/1234 or 254/24" 
             />
+            <p class="text-xs text-slate-500 mt-1">
+              💡 Special characters (/, \, etc.) will be automatically replaced with dashes (-)
+            </p>
           </div>
           
           <div>
