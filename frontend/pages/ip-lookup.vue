@@ -153,8 +153,10 @@ const loadRunDirectory = async () => {
   }
 
   try {
+    const config = useRuntimeConfig()
+    const apiBase = config.public.apiBase
     // Verify the directory has original_log.csv
-    const response = await fetch(`http://localhost:8000/api/lookup/status?run_dir=${encodeURIComponent(runDirInput.value)}`)
+    const response = await fetch(`${apiBase}/api/lookup/status?run_dir=${encodeURIComponent(runDirInput.value)}`)
     
     if (!response.ok) {
       throw new Error('Directory not found or invalid')
@@ -200,8 +202,10 @@ const onLookupComplete = async (data) => {
     try {
       console.log('Auto-storing results for FIR:', firNumber)
       
+      const config = useRuntimeConfig()
+      const apiBase = config.public.apiBase
       // Fetch the CSV file
-      const csvResponse = await fetch(`http://localhost:8000${data.csv}`)
+      const csvResponse = await fetch(`${apiBase}${data.csv}`)
       const csvBlob = await csvResponse.blob()
       const csvFile = new File([csvBlob], 'ip_lookup_results.csv', { type: 'text/csv' })
       
@@ -209,7 +213,7 @@ const onLookupComplete = async (data) => {
       const formData = new FormData()
       formData.append('file', csvFile)
       
-      const storeResponse = await fetch(`http://localhost:8000/api/fir/store-ip-results/${encodeURIComponent(firNumber)}`, {
+      const storeResponse = await fetch(`${apiBase}/api/fir/store-ip-results/${encodeURIComponent(firNumber)}`, {
         method: 'POST',
         body: formData
       })
@@ -260,8 +264,10 @@ const downloadFile = async (filePath, fileName) => {
   try {
     console.log('Downloading file:', filePath)
     
+    const config = useRuntimeConfig()
+    const apiBase = config.public.apiBase
     // Build full URL
-    const url = `http://localhost:8000${filePath}`
+    const url = `${apiBase}${filePath}`
     console.log('Full URL:', url)
     
     // Fetch the file
@@ -305,7 +311,9 @@ const createMasterFile = async () => {
   try {
     console.log('Creating master file for:', selectedRunDir.value)
     
-    const response = await fetch(`http://localhost:8000/api/lookup/merge?run_dir=${encodeURIComponent(selectedRunDir.value)}`, {
+    const config = useRuntimeConfig()
+    const apiBase = config.public.apiBase
+    const response = await fetch(`${apiBase}/api/lookup/merge?run_dir=${encodeURIComponent(selectedRunDir.value)}`, {
       method: 'POST'
     })
     

@@ -184,8 +184,10 @@ const startLookup = async () => {
   addLine('')
 
   try {
+    const config = useRuntimeConfig()
+    const apiBase = config.public.apiBase
     // Create EventSource for SSE
-    const url = `http://localhost:8000/api/lookup/stream?run_dir=${encodeURIComponent(props.runDir)}`
+    const url = `${apiBase}/api/lookup/stream?run_dir=${encodeURIComponent(props.runDir)}`
     eventSource.value = new EventSource(url)
 
     eventSource.value.onmessage = (event) => {
