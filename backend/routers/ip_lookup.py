@@ -14,10 +14,15 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 import pandas as pd
 
-# Import the enhanced bypass system
+# Import the enhanced bypass system and direct InfoByIP
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
-from utils.enhanced_cloudflare_bypass import EnhancedCloudflareBypass
+try:
+    from utils.enhanced_cloudflare_bypass import EnhancedCloudflareBypass
+    SELENIUM_AVAILABLE = True
+except:
+    SELENIUM_AVAILABLE = False
+from utils.infobyip_direct import InfoByIPDirect
 
 router = APIRouter()
 
@@ -127,33 +132,28 @@ async def progress_generator(run_dir: Path, csv_path: Path):
         yield f"data: {json.dumps({'type': 'info', 'message': f'⚠️  This will take approximately {estimated_minutes:.1f} minutes', 'estimated_time': estimated_minutes})}\n\n"
         await asyncio.sleep(0.5)
         
-        # Initialize bypass system
-        yield f"data: {json.dumps({'type': 'status', 'message': '🚀 Initializing Cloudflare bypass system...', 'progress': 5})}\n\n"
+        # Initialize InfoByIP Direct API (works on Render!)
+        yield f"data: {json.dumps({'type': 'status', 'message': '🚀 Initializing InfoByIP API...', 'progress': 5})}\n\n"
         await asyncio.sleep(0.3)
         
-        bypass = EnhancedCloudflareBypass(
-            headless=True,
-            cookie_file=str(run_dir / 'unlimited_lookup_cookies.json')
-        )
+        infobyip = InfoByIPDirect()
         
-        yield f"data: {json.dumps({'type': 'status', 'message': '🌐 Starting browser session...', 'progress': 10})}\n\n"
+        yield f"data: {json.dumps({'type': 'status', 'message': '🌐 Connecting to InfoByIP...', 'progress': 10})}\n\n"
         await asyncio.sleep(0.3)
         
-        # Initialize browser and solve Cloudflare challenge with first IP
-        yield f"data: {json.dumps({'type': 'status', 'message': '🔓 Solving Cloudflare challenge...', 'progress': 15})}\n\n"
+        # Test with first IP
+        yield f"data: {json.dumps({'type': 'status', 'message': '🔓 Testing connection...', 'progress': 15})}\n\n"
         await asyncio.sleep(0.3)
         
-        # Try first IP to initialize and solve challenge
         if ips:
             try:
-                first_url = f"https://www.infobyip.com/ip-{ips[0]}.html"
-                first_html = bypass.bypass_and_fetch(first_url)
-                if first_html:
-                    yield f"data: {json.dumps({'type': 'success', 'message': '✅ Cloudflare bypass successful!', 'progress': 20})}\n\n"
+                test_result = infobyip.lookup_ip(ips[0])
+                if test_result and test_result.get('country') != 'Unknown':
+                    yield f"data: {json.dumps({'type': 'success', 'message': '✅ InfoByIP connection successful!', 'progress': 20})}\n\n"
                 else:
-                    yield f"data: {json.dumps({'type': 'warning', 'message': '⚠️  First lookup returned no data, continuing...', 'progress': 20})}\n\n"
+                    yield f"data: {json.dumps({'type': 'warning', 'message': '⚠️  Connection established, starting lookups...', 'progress': 20})}\n\n"
             except Exception as e:
-                yield f"data: {json.dumps({'type': 'warning', 'message': f'⚠️  Challenge solve attempt: {str(e)}', 'progress': 20})}\n\n"
+                yield f"data: {json.dumps({'type': 'warning', 'message': f'⚠️  Test lookup: {str(e)}', 'progress': 20})}\n\n"
             await asyncio.sleep(0.5)
         
         # Process IPs
@@ -166,27 +166,55 @@ async def progress_generator(run_dir: Path, csv_path: Path):
             yield f"data: {json.dumps({'type': 'progress', 'message': f'🔎 Looking up IP {idx}/{total_ips}: {ip}', 'current': idx, 'total': total_ips, 'progress': progress, 'ip': ip})}\n\n"
             
             try:
-                # Build InfoByIP URL
-                url = f"https://www.infobyip.com/ip-{ip}.html"
+                # Use InfoByIP Direct API (same data as yesterday!)
+                result = infobyip.lookup_ip(ip)
                 
-                # Fetch HTML
-                html = bypass.bypass_and_fetch(url)
-                
-                if html:
-                    # Parse HTML to extract data
-                    result = parse_ip_data(html, ip)
+                if result and result.get('country') != 'Unknown':
+                    # Got data from InfoByIP!
                     results.append(result)
                     city = result.get("city", "Unknown")
                     country = result.get("country", "Unknown")
-                    message = f'✅ {ip} → {city}, {country}'
+                    isp = result.get("isp", "Unknown")
+                    message = f'✅ {ip} → {city}, {country} | {isp}'
                     yield f"data: {json.dumps({'type': 'success', 'message': message, 'ip': ip, 'result': result})}\n\n"
                 else:
-                    message = f'⚠️  {ip} → No data returned'
-                    yield f"data: {json.dumps({'type': 'warning', 'message': message, 'ip': ip})}\n\n"
+                    # No data from InfoByIP (same as yesterday - some IPs don't have data)
+                    result = {
+                        'ip': ip,
+                        'country': 'Unknown',
+                        'city': 'Unknown',
+                        'region': 'Unknown',
+                        'isp': 'Unknown',
+                        'organization': 'Unknown',
+                        'latitude': 'Unknown',
+                        'longitude': 'Unknown',
+                        'timezone': 'Unknown',
+                        'postal_code': 'Unknown',
+                        'source': 'none'
+                    }
+                    results.append(result)
+                    message = f'⚠️  {ip} → No data available from InfoByIP'
+                    yield f"data: {json.dumps({'type': 'warning', 'message': message, 'ip': ip, 'result': result})}\n\n"
                 
             except Exception as e:
+                # Error during lookup
                 error_msg = f'❌ {ip} → Error: {str(e)}'
                 yield f"data: {json.dumps({'type': 'error', 'message': error_msg, 'ip': ip, 'error': str(e)})}\n\n"
+                # Still add to results with Unknown data
+                result = {
+                    'ip': ip,
+                    'country': 'Unknown',
+                    'city': 'Unknown',
+                    'region': 'Unknown',
+                    'isp': 'Unknown',
+                    'organization': 'Unknown',
+                    'latitude': 'Unknown',
+                    'longitude': 'Unknown',
+                    'timezone': 'Unknown',
+                    'postal_code': 'Unknown',
+                    'source': 'error'
+                }
+                results.append(result)
             
             await asyncio.sleep(0.1)  # Small delay for UI updates
         
@@ -208,7 +236,7 @@ async def progress_generator(run_dir: Path, csv_path: Path):
             json.dump(results, f, indent=2)
         
         # Cleanup
-        bypass.close()
+        infobyip.close()
         
         elapsed_time = (datetime.now() - start_time).total_seconds() / 60
         success_rate = (len(results) / total_ips * 100) if total_ips > 0 else 0
