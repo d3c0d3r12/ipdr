@@ -5,7 +5,8 @@
 
 export const useApi = () => {
   const { token } = useAuth()
-  const baseURL = 'http://localhost:8000'
+  const config = useRuntimeConfig()
+  const baseURL = config.public.apiBase
 
   const apiCall = async (endpoint: string, options: any = {}) => {
     const headers: any = {

@@ -174,7 +174,8 @@ onMounted(async () => {
 const loadData = async () => {
   loading.value = true
   try {
-    const baseURL = 'http://localhost:8000'
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase
     
     // Load FIR details
     const detailsRes = await fetch(`${baseURL}/api/fir/${firId}`)
