@@ -433,7 +433,7 @@ async def merge_master_file(run_dir: str = Query(..., description="Run directory
         raise HTTPException(status_code=500, detail=f"Error merging files: {str(e)}")
 
 
-@router.get("/files/{run_dir}/{filename}")
+@router.get("/files/{run_dir:path}/{filename}")
 async def download_file(run_dir: str, filename: str):
     """
     Download a file from a run directory
@@ -442,14 +442,39 @@ async def download_file(run_dir: str, filename: str):
     - ip_lookup_results.csv
     - ip_lookup_results.json
     - Master file.csv
+    
+    Args:
+        run_dir: Can be either:
+                 - Just directory name: "20251103_123456_FIR123"
+                 - Full path: "backend/processed/20251103_123456_FIR123"
+        filename: Name of file to download
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Download request - run_dir: {run_dir}, filename: {filename}")
+    
     # Build absolute file path
     base_dir = Path(__file__).parent.parent  # backend directory
-    file_path = base_dir / "processed" / run_dir / filename
+    
+    # Handle both formats: "20251103_123456_FIR" or "backend/processed/20251103_123456_FIR"
+    if "processed" in run_dir:
+        # Full path provided, extract just the directory name
+        run_dir_name = Path(run_dir).name
+        logger.info(f"Extracted directory name: {run_dir_name}")
+    else:
+        # Just directory name provided
+        run_dir_name = run_dir
+    
+    file_path = base_dir / "processed" / run_dir_name / filename
+    logger.info(f"Looking for file at: {file_path}")
     
     # Check if file exists
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail=f"File not found: {filename} in {run_dir}")
+        logger.error(f"File not found: {file_path}")
+        raise HTTPException(status_code=404, detail=f"File not found: {filename} in {run_dir_name}")
+    
+    logger.info(f"File found, serving: {file_path}")
     
     # Return file
     return FileResponse(
