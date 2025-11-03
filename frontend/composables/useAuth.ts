@@ -94,7 +94,9 @@ export const useAuth = () => {
 
   const login = async (username: string, password: string) => {
     try {
-      const response = await $fetch('http://localhost:8000/api/auth/login', {
+      const config = useRuntimeConfig()
+      const apiBase = config.public.apiBase
+      const response = await $fetch(`${apiBase}/api/auth/login`, {
         method: 'POST',
         body: {
           username,
@@ -145,7 +147,9 @@ export const useAuth = () => {
   const logout = async () => {
     try {
       if (token.value) {
-        await $fetch('http://localhost:8000/api/auth/logout', {
+        const config = useRuntimeConfig()
+        const apiBase = config.public.apiBase
+        await $fetch(`${apiBase}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token.value}`
@@ -229,7 +233,9 @@ export const useAuth = () => {
 
   const signup = async (data: any) => {
     try {
-      const response = await $fetch('http://localhost:8000/api/auth/signup', {
+      const config = useRuntimeConfig()
+      const apiBase = config.public.apiBase
+      const response = await $fetch(`${apiBase}/api/auth/signup`, {
         method: 'POST',
         body: data
       })
