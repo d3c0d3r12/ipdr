@@ -10,9 +10,13 @@ from typing import List, Dict, Any
 import csv
 import json
 import asyncio
+import logging
 from datetime import datetime
 from bs4 import BeautifulSoup
 import pandas as pd
+
+# Setup logger
+logger = logging.getLogger(__name__)
 
 # Import the enhanced bypass system and direct InfoByIP
 import sys
@@ -453,9 +457,6 @@ async def download_file(run_dir: str, filename: str):
                  - Full path: "backend/processed/20251103_123456_FIR123"
         filename: Name of file to download
     """
-    import logging
-    logger = logging.getLogger(__name__)
-    
     logger.info(f"Download request - run_dir: {run_dir}, filename: {filename}")
     
     # Build absolute file path
