@@ -219,16 +219,20 @@ async def progress_generator(run_dir: Path, csv_path: Path):
         
         # Save CSV
         csv_output = run_dir / 'ip_lookup_results.csv'
+        logger.info(f"Saving CSV to: {csv_output}")
         with open(csv_output, 'w', encoding='utf-8', newline='') as f:
             if results:
                 writer = csv.DictWriter(f, fieldnames=results[0].keys())
                 writer.writeheader()
                 writer.writerows(results)
+        logger.info(f"CSV saved successfully. File exists: {csv_output.exists()}, Size: {csv_output.stat().st_size if csv_output.exists() else 0} bytes")
         
         # Save JSON
         json_output = run_dir / 'ip_lookup_results.json'
+        logger.info(f"Saving JSON to: {json_output}")
         with open(json_output, 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=2)
+        logger.info(f"JSON saved successfully. File exists: {json_output.exists()}, Size: {json_output.stat().st_size if json_output.exists() else 0} bytes")
         
         # Cleanup
         infobyip.close()
@@ -472,7 +476,22 @@ async def download_file(run_dir: str, filename: str):
     # Check if file exists
     if not file_path.exists():
         logger.error(f"File not found: {file_path}")
-        raise HTTPException(status_code=404, detail=f"File not found: {filename} in {run_dir_name}")
+        
+        # List what files DO exist in the directory
+        run_dir_path = base_dir / "processed" / run_dir_name
+        if run_dir_path.exists():
+            existing_files = list(run_dir_path.glob("*"))
+            logger.error(f"Directory exists but file not found. Available files: {[f.name for f in existing_files]}")
+            raise HTTPException(
+                status_code=404, 
+                detail=f"File '{filename}' not found in directory '{run_dir_name}'. Available files: {[f.name for f in existing_files]}"
+            )
+        else:
+            logger.error(f"Directory does not exist: {run_dir_path}")
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Directory '{run_dir_name}' not found. Please complete IP lookup first."
+            )
     
     logger.info(f"File found, serving: {file_path}")
     
