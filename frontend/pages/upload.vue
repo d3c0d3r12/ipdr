@@ -73,7 +73,7 @@ async function uploadFile() {
       message.value += ' - Redirecting to IP Lookup...'
       console.log('✅ Redirect conditions met!')
       
-      const url = `/ip-lookup?run_dir=${encodeURIComponent(data.run_dir)}&fir_number=${encodeURIComponent(firNo.value)}&auto_start=${bypassCloudflare.value}`
+      const url = `/ip-lookup?run_dir=${encodeURIComponent(data.run_dir)}&fir_number=${encodeURIComponent(firNo.value)}&auto_start=true`
       console.log('🚀 Redirecting to:', url)
       
       // Simple redirect with small delay

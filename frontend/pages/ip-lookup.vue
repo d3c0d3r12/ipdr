@@ -337,23 +337,51 @@ const createMasterFile = async () => {
 }
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   loadRecentRuns()
 
   // Check if run_dir is passed in query params
   const urlParams = new URLSearchParams(window.location.search)
   const runDir = urlParams.get('run_dir')
+  const shouldAutoStart = urlParams.get('auto_start') === 'true'
+  
+  console.log('📍 IP Lookup Page Loaded')
+  console.log('  - run_dir:', runDir)
+  console.log('  - auto_start:', shouldAutoStart)
+  
   if (runDir) {
     runDirInput.value = runDir
-    // Automatically load and start without user interaction
-    selectedRunDir.value = runDir
-    autoStart.value = urlParams.get('auto_start') === 'true'
+    autoStart.value = shouldAutoStart
     
-    // Save to recent runs
-    saveToRecentRuns(runDir, {
-      total_ips: 0,
-      has_results: false
-    })
+    // Verify directory exists and has IPs
+    try {
+      const config = useRuntimeConfig()
+      const apiBase = config.public.apiBase
+      console.log('🔍 Verifying directory:', runDir)
+      
+      const response = await fetch(`${apiBase}/api/lookup/status?run_dir=${encodeURIComponent(runDir)}`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('✅ Directory verified:', data)
+        
+        if (data.total_ips > 0) {
+          selectedRunDir.value = runDir
+          saveToRecentRuns(runDir, data)
+          console.log('✅ Auto-start enabled:', shouldAutoStart)
+        } else {
+          console.error('❌ No IPs found in directory')
+          alert('No IPs found in the uploaded file. Please check your HTML file.')
+        }
+      } else {
+        console.error('❌ Directory verification failed:', response.status)
+        alert('Could not verify the uploaded directory. Please try again.')
+      }
+    } catch (error) {
+      console.error('❌ Error verifying directory:', error)
+      // Fallback: still try to load it
+      selectedRunDir.value = runDir
+    }
   }
 })
 </script>
