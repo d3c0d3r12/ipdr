@@ -256,7 +256,10 @@ const onLookupComplete = async (data) => {
       const token = localStorage.getItem('auth_token')
       
       // Split FIR number (e.g., "254/25" -> "254" and "25")
-      const [firNum, year] = firNumber.split('/')
+      // If no year provided, use current year
+      const parts = firNumber.split('/')
+      const firNum = parts[0]
+      const year = parts[1] || new Date().getFullYear().toString().slice(-2)
       
       const storeResponse = await fetch(`${apiBase}/api/fir/store-ip-results/${firNum}/${year}`, {
         method: 'POST',
@@ -363,6 +366,10 @@ const createMasterFile = async () => {
     const apiBase = config.public.apiBase
     const token = localStorage.getItem('auth_token')
     
+    if (!token) {
+      throw new Error('Not authenticated. Please login first.')
+    }
+    
     const formData = new FormData()
     formData.append('run_dir', selectedRunDir.value)
     
@@ -375,7 +382,10 @@ const createMasterFile = async () => {
     })
     
     if (!response.ok) {
-      const error = await response.json()
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Please login again.')
+      }
+      const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
       throw new Error(error.detail || 'Failed to create master file')
     }
     
@@ -409,6 +419,10 @@ const fixToStart = async () => {
     const apiBase = config.public.apiBase
     const token = localStorage.getItem('auth_token')
     
+    if (!token) {
+      throw new Error('Not authenticated. Please login first.')
+    }
+    
     const formData = new FormData()
     formData.append('run_dir', selectedRunDir.value)
     
@@ -421,7 +435,10 @@ const fixToStart = async () => {
     })
     
     if (!response.ok) {
-      const error = await response.json()
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Please login again.')
+      }
+      const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
       throw new Error(error.detail || 'Failed to create fixed file')
     }
     
