@@ -2,7 +2,7 @@
 Cookie Management API - Upload and manage InfoByIP cookies
 """
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.responses import JSONResponse
 from pathlib import Path
 import json
@@ -12,6 +12,14 @@ import logging
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
 from utils.infobyip_cookie_manager import cookie_manager
+
+# Import auto fetcher
+try:
+    from utils.auto_cookie_fetcher import auto_fetcher
+    AUTO_FETCH_AVAILABLE = True
+except Exception as e:
+    logger.warning(f"Auto cookie fetcher not available: {e}")
+    AUTO_FETCH_AVAILABLE = False
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -175,4 +183,61 @@ async def clear_cookies():
         })
     except Exception as e:
         logger.error(f"Error clearing cookies: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/auto-fetch")
+async def auto_fetch_cookies(headless: bool = True):
+    """
+    Automatically fetch cookies from InfoByIP using headless browser
+    
+    This will:
+    1. Launch a headless Chrome browser
+    2. Visit InfoByIP.com
+    3. Wait for Cloudflare challenge to complete
+    4. Extract cookies
+    5. Save and load them into the system
+    
+    Args:
+        headless: Run browser in headless mode (default: True)
+    
+    Returns:
+        Success status and cookie information
+    """
+    if not AUTO_FETCH_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Auto-fetch feature not available. Selenium may not be installed."
+        )
+    
+    try:
+        logger.info("🚀 Starting automatic cookie fetch...")
+        
+        # Fetch cookies
+        result = auto_fetcher.fetch_cookies(headless=headless, max_wait=30)
+        
+        if not result.get('success'):
+            raise HTTPException(
+                status_code=400,
+                detail=result.get('message', 'Failed to fetch cookies')
+            )
+        
+        # Reload cookies into cookie manager
+        cookie_manager.load_cookies()
+        
+        # Get updated status
+        status = cookie_manager.get_status()
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": result.get('message'),
+            "cookie_count": result.get('cookie_count'),
+            "has_cf_clearance": result.get('has_cf_clearance'),
+            "status": status
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in auto-fetch: {e}")
         raise HTTPException(status_code=500, detail=str(e))

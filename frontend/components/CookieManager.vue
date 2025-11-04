@@ -41,9 +41,28 @@
           <div class="upload-section">
             <h3>Upload New Cookies</h3>
             
-            <!-- Method 1: File Upload -->
+            <!-- Method 0: Auto-Fetch (NEW!) -->
+            <div class="upload-method auto-fetch-method">
+              <h4>🚀 Method 1: Auto-Fetch (Fully Automated!)</h4>
+              <p class="method-description">
+                Click the button below and the system will automatically fetch cookies for you!
+                No manual steps needed. Takes 10-15 seconds.
+              </p>
+              <button
+                @click="autoFetchCookies"
+                class="btn-auto-fetch"
+                :disabled="autoFetching"
+              >
+                {{ autoFetching ? '⏳ Fetching Cookies...' : '🔄 Auto-Fetch Cookies' }}
+              </button>
+              <p v-if="autoFetching" class="auto-fetch-status">
+                {{ autoFetchStatus }}
+              </p>
+            </div>
+
+            <!-- Method 2: File Upload -->
             <div class="upload-method">
-              <h4>Method 1: Upload File</h4>
+              <h4>Method 2: Upload File</h4>
               <div class="upload-area">
                 <input
                   type="file"
@@ -67,9 +86,9 @@
               </div>
             </div>
 
-            <!-- Method 2: Paste JSON -->
+            <!-- Method 3: Paste JSON -->
             <div class="upload-method">
-              <h4>Method 2: Paste Cookies (Any Browser)</h4>
+              <h4>Method 3: Paste Cookies (Any Browser)</h4>
               <textarea
                 v-model="pastedCookies"
                 placeholder='Paste cookies JSON here, e.g.:
@@ -197,6 +216,8 @@ const selectedFile = ref(null)
 const pastedCookies = ref('')
 const uploading = ref(false)
 const validating = ref(false)
+const autoFetching = ref(false)
+const autoFetchStatus = ref('')
 const uploadMessage = ref('')
 const uploadMessageClass = ref('')
 
@@ -346,6 +367,52 @@ const uploadPastedCookies = async () => {
     uploadMessageClass.value = 'error'
   } finally {
     uploading.value = false
+  }
+}
+
+const autoFetchCookies = async () => {
+  autoFetching.value = true
+  uploadMessage.value = ''
+  autoFetchStatus.value = '🚀 Launching browser...'
+
+  try {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    autoFetchStatus.value = '🌐 Visiting InfoByIP.com...'
+    
+    await new Promise(resolve => setTimeout(resolve, 500))
+    autoFetchStatus.value = '⏳ Waiting for Cloudflare challenge...'
+
+    const response = await fetch(`${apiBase}/api/cookies/auto-fetch`, {
+      method: 'POST'
+    })
+
+    const result = await response.json()
+
+    if (response.ok) {
+      autoFetchStatus.value = '✅ Success!'
+      uploadMessage.value = `✅ ${result.message} (${result.cookie_count} cookies fetched)`
+      uploadMessageClass.value = 'success'
+      cookieStatus.value = result.status
+      
+      // Emit event to parent
+      emit('cookiesUpdated', result.status)
+      
+      // Clear status after 2 seconds
+      setTimeout(() => {
+        autoFetchStatus.value = ''
+      }, 2000)
+    } else {
+      autoFetchStatus.value = '❌ Failed'
+      uploadMessage.value = `❌ ${result.detail || 'Auto-fetch failed'}`
+      uploadMessageClass.value = 'error'
+    }
+  } catch (error) {
+    console.error('Error auto-fetching cookies:', error)
+    autoFetchStatus.value = '❌ Error'
+    uploadMessage.value = '❌ Auto-fetch failed. Please try manual method.'
+    uploadMessageClass.value = 'error'
+  } finally {
+    autoFetching.value = false
   }
 }
 
@@ -512,6 +579,66 @@ onMounted(() => {
   color: #3b82f6;
   margin: 0 0 12px 0;
   font-size: 14px;
+}
+
+.auto-fetch-method {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.1));
+  border: 2px solid #22c55e;
+}
+
+.auto-fetch-method h4 {
+  color: #22c55e;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.method-description {
+  color: #999;
+  font-size: 13px;
+  margin: 8px 0 16px 0;
+  line-height: 1.5;
+}
+
+.btn-auto-fetch {
+  width: 100%;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.btn-auto-fetch:hover:not(:disabled) {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
+}
+
+.btn-auto-fetch:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.auto-fetch-status {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  color: #3b82f6;
+  font-size: 13px;
+  text-align: center;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 .cookie-textarea {
