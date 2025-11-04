@@ -241,3 +241,81 @@ async def auto_fetch_cookies(headless: bool = True):
     except Exception as e:
         logger.error(f"Error in auto-fetch: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/service/status")
+async def get_service_status():
+    """
+    Get background cookie refresh service status
+    
+    Returns information about:
+    - Service running status
+    - Last refresh time
+    - Next refresh time
+    - Refresh count
+    - Error count
+    """
+    try:
+        from services.cookie_refresh_service import cookie_refresh_service
+        status = cookie_refresh_service.get_status()
+        return JSONResponse(content=status)
+    except Exception as e:
+        logger.error(f"Error getting service status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/service/refresh")
+async def manual_service_refresh():
+    """
+    Manually trigger background service to refresh cookies
+    
+    This is for the dashboard button - triggers immediate refresh
+    """
+    try:
+        from services.cookie_refresh_service import cookie_refresh_service
+        result = await cookie_refresh_service.manual_refresh()
+        
+        if result.get('success'):
+            return JSONResponse(content=result)
+        else:
+            raise HTTPException(status_code=400, detail=result.get('message'))
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in manual refresh: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/service/enable")
+async def enable_auto_refresh():
+    """
+    Enable automatic cookie refresh
+    """
+    try:
+        from services.cookie_refresh_service import cookie_refresh_service
+        cookie_refresh_service.enable_auto_refresh()
+        return JSONResponse(content={
+            "success": True,
+            "message": "Auto-refresh enabled"
+        })
+    except Exception as e:
+        logger.error(f"Error enabling auto-refresh: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/service/disable")
+async def disable_auto_refresh():
+    """
+    Disable automatic cookie refresh
+    """
+    try:
+        from services.cookie_refresh_service import cookie_refresh_service
+        cookie_refresh_service.disable_auto_refresh()
+        return JSONResponse(content={
+            "success": True,
+            "message": "Auto-refresh disabled"
+        })
+    except Exception as e:
+        logger.error(f"Error disabling auto-refresh: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

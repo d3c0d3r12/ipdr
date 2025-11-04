@@ -1,0 +1,62 @@
+[
+  {
+    "domain": ".infobyip.com",
+    "expiry": 1793779765,
+    "httpOnly": false,
+    "name": "FCNEC",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "%5B%5B%22AKsRol9Z9lNVi7FFNGRqfP2CHfQlvlVeA3Ot9Li3L0qqUCRs6xcdGhxOr-QCKOVjbuoHy8BExZ7yWNQxhN4rZM5gZH2_iU2CmcWZLYUroVCW44AM5ojtoF9-vV2O6T3JXKSN9ApJs63pFPvwx6Nm36Wt8zV8onwmeQ%3D%3D%22%5D%5D"
+  },
+  {
+    "domain": ".infobyip.com",
+    "expiry": 1796803764,
+    "httpOnly": false,
+    "name": "_ga",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "GA1.1.1735576930.1762243764"
+  },
+  {
+    "domain": ".infobyip.com",
+    "expiry": 1762330165,
+    "httpOnly": false,
+    "name": "w3ad",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "0"
+  },
+  {
+    "domain": ".infobyip.com",
+    "expiry": 1762330165,
+    "httpOnly": false,
+    "name": "w3ad1length",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "0"
+  },
+  {
+    "domain": ".infobyip.com",
+    "expiry": 1795939765,
+    "httpOnly": false,
+    "name": "FCCDCF",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "%5Bnull%2Cnull%2Cnull%2Cnull%2Cnull%2Cnull%2C%5B%5B32%2C%22%5B%5C%224d111f6d-5c83-474a-99b1-f85ae543436e%5C%22%2C%5B1762243764%2C33000000%5D%5D%22%5D%5D%5D"
+  },
+  {
+    "domain": ".infobyip.com",
+    "expiry": 1796803764,
+    "httpOnly": false,
+    "name": "_ga_FEQ5C4GK3T",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "GS2.1.s1762243764$o1$g0$t1762243764$j60$l0$h0"
+  }
+]
