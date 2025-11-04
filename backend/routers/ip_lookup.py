@@ -6,7 +6,7 @@ Handles unlimited IP lookups with Cloudflare bypass and real-time progress strea
 from fastapi import APIRouter, HTTPException, Query, Form, Depends
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
-from database.database import get_db
+from core.db import get_db
 from models.user import User
 from routers.auth_secure import get_current_user
 from pathlib import Path
