@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, Form, Depends
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
 from core.db import get_db
-from models.user import User
+from models.user_auth import User
 from routers.auth_secure import get_current_user
 from pathlib import Path
 from typing import List, Dict, Any
