@@ -3,8 +3,12 @@ Unlimited IP Lookup Router - InfoByIP Integration
 Handles unlimited IP lookups with Cloudflare bypass and real-time progress streaming
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Form, Depends
 from fastapi.responses import StreamingResponse, FileResponse
+from sqlalchemy.orm import Session
+from database.database import get_db
+from models.user import User
+from routers.auth_secure import get_current_user
 from pathlib import Path
 from typing import List, Dict, Any
 import csv
@@ -409,15 +413,21 @@ async def get_lookup_status(run_dir: str = Query(...)):
     }
 
 
-@router.post("/lookup/merge")
-async def merge_master_file(run_dir: str = Query(..., description="Run directory path")):
+@router.post("/merge-master-file")
+async def merge_master_file(
+    run_dir: str = Form(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
-    Merge original_log.csv and ip_lookup_results.csv into Master file.csv
+    Merge original_log.csv with ip_lookup_results.csv to create Master file.csv
     
-    Combines timestamp and IP from original_log.csv with lookup data from ip_lookup_results.csv
-    Output columns: timestamp, ip, country, city, region, isp
+    Creates a master file with columns:
+    - timestamp, ip, country, city, region, isp
     """
-    run_path = Path(run_dir)
+    # Build absolute path
+    base_dir = Path(__file__).parent.parent  # backend directory
+    run_path = base_dir / "processed" / run_dir
     
     if not run_path.exists():
         raise HTTPException(status_code=404, detail=f"Run directory not found: {run_dir}")
@@ -466,11 +476,57 @@ async def merge_master_file(run_dir: str = Query(..., description="Run directory
             "master_file": f"/api/files/{run_path.name}/Master file.csv",
             "total_records": len(df_master),
             "columns": list(df_master.columns),
-            "sample_data": df_master.head(3).to_dict('records')
+            "sample_data": df_master.head(3).to_dict('records'),
+            "run_dir": run_path.name
         }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error merging files: {str(e)}")
+
+
+@router.post("/fix-to-start")
+async def fix_to_start(
+    run_dir: str = Form(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Remove header row from Master file.csv and create fully_fixed.csv
+    
+    This prepares the file for Final Report Generator by removing the first row (headers).
+    """
+    # Build absolute path
+    base_dir = Path(__file__).parent.parent  # backend directory
+    run_path = base_dir / "processed" / run_dir
+    
+    if not run_path.exists():
+        raise HTTPException(status_code=404, detail=f"Run directory not found: {run_dir}")
+    
+    master_file = run_path / 'Master file.csv'
+    
+    if not master_file.exists():
+        raise HTTPException(status_code=404, detail="Master file.csv not found. Please create Master file first.")
+    
+    try:
+        import pandas as pd
+        
+        # Read Master file
+        df = pd.read_csv(master_file, encoding='utf-8')
+        
+        # Save without header
+        fixed_file = run_path / 'fully_fixed.csv'
+        df.to_csv(fixed_file, index=False, header=False, encoding='utf-8')
+        
+        return {
+            "success": True,
+            "message": "Fixed file created successfully (header removed)",
+            "fixed_file": f"/api/files/{run_path.name}/fully_fixed.csv",
+            "total_records": len(df),
+            "run_dir": run_path.name
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating fixed file: {str(e)}")
 
 
 @router.get("/files/{run_dir}/{filename}")

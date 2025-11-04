@@ -130,6 +130,40 @@
             </button>
           </div>
         </div>
+
+        <!-- Fix to Start Section -->
+        <div v-if="masterFile" class="card master-section">
+          <h3>🔧 Fix to Start</h3>
+          <p>Remove header row and prepare file for Final Report Generator</p>
+          <button 
+            @click="fixToStart" 
+            :disabled="fixingFile"
+            class="btn-fix-start"
+          >
+            {{ fixingFile ? '⏳ Processing...' : '🚀 Fix to Start' }}
+          </button>
+          
+          <div v-if="fixedFile" class="fixed-result">
+            <div class="success-message">
+              ✅ Fixed file created successfully!
+            </div>
+            <div class="fixed-info">
+              <p><strong>Total Records:</strong> {{ fixedFile.total_records }}</p>
+              <p><strong>Status:</strong> Header removed, ready for Final Report Generator</p>
+            </div>
+            <button @click="downloadFile(fixedFile.fixed_file, 'fully_fixed.csv')" class="btn-download-fixed">
+              💾 Download fully_fixed.csv
+            </button>
+            
+            <div class="final-report-info">
+              <h4>📊 Next Step: Final Report Generator</h4>
+              <p>Upload <strong>fully_fixed.csv</strong> to the Final Report Generator to get your complete analysis report.</p>
+              <a href="/Final Report Generator_V1.html" target="_blank" class="btn-final-report">
+                🎯 Open Final Report Generator
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -147,6 +181,8 @@ const results = ref(null)
 const recentRuns = ref([])
 const mergingMaster = ref(false)
 const masterFile = ref(null)
+const fixingFile = ref(false)
+const fixedFile = ref(null)
 
 // Methods
 const loadRunDirectory = async () => {
@@ -325,8 +361,17 @@ const createMasterFile = async () => {
     
     const config = useRuntimeConfig()
     const apiBase = config.public.apiBase
-    const response = await fetch(`${apiBase}/api/lookup/merge?run_dir=${encodeURIComponent(selectedRunDir.value)}`, {
-      method: 'POST'
+    const token = localStorage.getItem('auth_token')
+    
+    const formData = new FormData()
+    formData.append('run_dir', selectedRunDir.value)
+    
+    const response = await fetch(`${apiBase}/api/merge-master-file`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
     })
     
     if (!response.ok) {
@@ -345,6 +390,52 @@ const createMasterFile = async () => {
     alert(`Failed to create master file: ${error.message}`)
   } finally {
     mergingMaster.value = false
+  }
+}
+
+const fixToStart = async () => {
+  if (!masterFile.value) {
+    alert('Please create Master file first')
+    return
+  }
+  
+  fixingFile.value = true
+  fixedFile.value = null
+  
+  try {
+    console.log('Creating fixed file for:', selectedRunDir.value)
+    
+    const config = useRuntimeConfig()
+    const apiBase = config.public.apiBase
+    const token = localStorage.getItem('auth_token')
+    
+    const formData = new FormData()
+    formData.append('run_dir', selectedRunDir.value)
+    
+    const response = await fetch(`${apiBase}/api/fix-to-start`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    })
+    
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to create fixed file')
+    }
+    
+    const data = await response.json()
+    console.log('Fixed file created:', data)
+    
+    fixedFile.value = data
+    alert(`✅ Fixed file created successfully!\n${data.total_records} records ready for Final Report Generator`)
+    
+  } catch (error) {
+    console.error('Fix to start error:', error)
+    alert(`Failed to create fixed file: ${error.message}`)
+  } finally {
+    fixingFile.value = false
   }
 }
 
@@ -829,6 +920,119 @@ onMounted(async () => {
   font-weight: bold;
   cursor: pointer;
   transition: all 0.3s;
+}
+
+/* Fix to Start Button */
+.btn-fix-start {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #ff0080 0%, #ff8c00 100%);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 0 20px rgba(255, 0, 128, 0.3);
+}
+
+.btn-fix-start:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(255, 0, 128, 0.5);
+}
+
+.btn-fix-start:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fixed-result {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(255, 0, 128, 0.05);
+  border: 1px solid #ff0080;
+  border-radius: 8px;
+}
+
+.fixed-info {
+  margin-bottom: 16px;
+}
+
+.fixed-info p {
+  margin: 4px 0;
+  color: #ff8c00;
+  font-size: 14px;
+}
+
+.fixed-info strong {
+  color: #ff0080;
+}
+
+.btn-download-fixed {
+  width: 100%;
+  padding: 12px;
+  background: #000;
+  border: 2px solid #ff0080;
+  border-radius: 4px;
+  color: #ff0080;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 16px;
+}
+
+.btn-download-fixed:hover {
+  background: rgba(255, 0, 128, 0.1);
+  box-shadow: 0 0 15px rgba(255, 0, 128, 0.3);
+}
+
+.final-report-info {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(0, 255, 255, 0.05);
+  border: 2px dashed #0ff;
+  border-radius: 8px;
+}
+
+.final-report-info h4 {
+  color: #0ff;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.final-report-info p {
+  color: #0f0;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.btn-final-report {
+  display: inline-block;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #0ff 0%, #00ff88 100%);
+  border: none;
+  border-radius: 6px;
+  color: #000;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: bold;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+}
+
+.btn-final-report:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(0, 255, 255, 0.5);
 }
 
 .btn-download-master:hover {
