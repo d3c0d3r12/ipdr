@@ -81,9 +81,10 @@ async def create_fir(
     )
 
 
-@router.post("/store-ip-results/{fir_number}")
+@router.post("/store-ip-results/{fir_number}/{year}")
 async def store_ip_results(
     fir_number: str,
+    year: str,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -95,8 +96,11 @@ async def store_ip_results(
     associated with the FIR number.
     """
     
+    # Combine FIR number and year
+    full_fir_number = f"{fir_number}/{year}"
+    
     # Check if FIR exists
-    fir_case = FIRService.get_fir_case(db, fir_number)
+    fir_case = FIRService.get_fir_case(db, full_fir_number)
     if not fir_case:
         raise HTTPException(status_code=404, detail="FIR case not found")
     
@@ -113,14 +117,14 @@ async def store_ip_results(
         if file.filename.endswith('.csv'):
             count, message = FIRService.store_ip_lookup_results_from_csv(
                 db=db,
-                fir_number=fir_number,
+                fir_number=full_fir_number,
                 csv_file_path=str(file_path),
                 performed_by=current_user.username
             )
         elif file.filename.endswith('.json'):
             count, message = FIRService.store_ip_lookup_results_from_json(
                 db=db,
-                fir_number=fir_number,
+                fir_number=full_fir_number,
                 json_file_path=str(file_path),
                 performed_by=current_user.username
             )
@@ -133,7 +137,7 @@ async def store_ip_results(
         return {
             "success": True,
             "message": message,
-            "fir_number": fir_number,
+            "fir_number": full_fir_number,
             "ips_stored": count
         }
         
