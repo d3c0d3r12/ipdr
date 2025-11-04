@@ -138,16 +138,21 @@ async def progress_generator(run_dir: Path, csv_path: Path):
         yield f"data: {json.dumps({'type': 'info', 'message': f'⚠️  This will take approximately {estimated_minutes:.1f} minutes', 'estimated_time': estimated_minutes})}\n\n"
         await asyncio.sleep(0.5)
         
-        # Check cookie status first
-        cookie_status = cookie_manager.get_status()
-        use_cookies = cookie_status.get('cookies_valid', False)
-        
-        if use_cookies:
-            yield f"data: {json.dumps({'type': 'status', 'message': '🍪 Using cookie-based access (Fast Mode)...', 'progress': 5})}\n\n"
-            logger.info("✅ Using cookies for InfoByIP access")
-        else:
+        # Check cookie status first (optional - won't break if not available)
+        use_cookies = False
+        try:
+            cookie_status = cookie_manager.get_status()
+            use_cookies = cookie_status.get('cookies_valid', False)
+            
+            if use_cookies:
+                yield f"data: {json.dumps({'type': 'status', 'message': '🍪 Using cookie-based access (Fast Mode)...', 'progress': 5})}\n\n"
+                logger.info("✅ Using cookies for InfoByIP access")
+            else:
+                yield f"data: {json.dumps({'type': 'status', 'message': '🚀 Initializing InfoByIP API...', 'progress': 5})}\n\n"
+                logger.info("⚠️ Cookies not available, using direct API")
+        except Exception as e:
+            logger.warning(f"Cookie manager not available: {e}")
             yield f"data: {json.dumps({'type': 'status', 'message': '🚀 Initializing InfoByIP API...', 'progress': 5})}\n\n"
-            logger.info("⚠️ Cookies not available, using direct API")
         
         await asyncio.sleep(0.3)
         
@@ -188,23 +193,28 @@ async def progress_generator(run_dir: Path, csv_path: Path):
             try:
                 # Try cookies first if available
                 if use_cookies:
-                    cookie_result = cookie_manager.lookup_ip(ip)
-                    
-                    # Check if cookies worked
-                    if cookie_result.get('error') == 'cookies_expired':
-                        logger.warning(f"Cookies expired for IP {ip}, switching to direct API")
+                    try:
+                        cookie_result = cookie_manager.lookup_ip(ip)
+                        
+                        # Check if cookies worked
+                        if cookie_result.get('error') == 'cookies_expired':
+                            logger.warning(f"Cookies expired for IP {ip}, switching to direct API")
+                            use_cookies = False
+                            yield f"data: {json.dumps({'type': 'warning', 'message': '⚠️ Cookies expired - switching to direct API', 'progress': progress})}\n\n"
+                            # Try direct API
+                            infobyip_result = infobyip.lookup_ip(ip)
+                        elif cookie_result.get('error'):
+                            logger.warning(f"Cookie lookup failed for IP {ip}: {cookie_result.get('message')}")
+                            # Try direct API as fallback
+                            infobyip_result = infobyip.lookup_ip(ip)
+                        else:
+                            # Cookies worked!
+                            infobyip_result = cookie_result
+                            logger.info(f"✅ Successfully looked up {ip} via cookies")
+                    except Exception as cookie_error:
+                        logger.warning(f"Cookie lookup error for {ip}: {cookie_error}, falling back to direct API")
                         use_cookies = False
-                        yield f"data: {json.dumps({'type': 'warning', 'message': '⚠️ Cookies expired - switching to direct API', 'progress': progress})}\n\n"
-                        # Try direct API
                         infobyip_result = infobyip.lookup_ip(ip)
-                    elif cookie_result.get('error'):
-                        logger.warning(f"Cookie lookup failed for IP {ip}: {cookie_result.get('message')}")
-                        # Try direct API as fallback
-                        infobyip_result = infobyip.lookup_ip(ip)
-                    else:
-                        # Cookies worked!
-                        infobyip_result = cookie_result
-                        logger.info(f"✅ Successfully looked up {ip} via cookies")
                 else:
                     # Use direct API
                     infobyip_result = infobyip.lookup_ip(ip)
@@ -480,7 +490,7 @@ async def merge_master_file(run_dir: str = Query(..., description="Run directory
         raise HTTPException(status_code=500, detail=f"Error merging files: {str(e)}")
 
 
-@router.get("/files/{run_dir:path}/{filename}")
+@router.get("/files/{run_dir}/{filename}")
 async def download_file(run_dir: str, filename: str):
     """
     Download a file from a run directory
@@ -491,53 +501,54 @@ async def download_file(run_dir: str, filename: str):
     - Master file.csv
     
     Args:
-        run_dir: Can be either:
-                 - Just directory name: "20251103_123456_FIR123"
-                 - Full path: "backend/processed/20251103_123456_FIR123"
+        run_dir: Directory name (e.g., "20251104_065000_254-25")
         filename: Name of file to download
     """
-    logger.info(f"Download request - run_dir: {run_dir}, filename: {filename}")
+    logger.info(f"📥 Download request - run_dir: {run_dir}, filename: {filename}")
     
     # Build absolute file path
     base_dir = Path(__file__).parent.parent  # backend directory
+    file_path = base_dir / "processed" / run_dir / filename
     
-    # Handle both formats: "20251103_123456_FIR" or "backend/processed/20251103_123456_FIR"
-    if "processed" in run_dir:
-        # Full path provided, extract just the directory name
-        run_dir_name = Path(run_dir).name
-        logger.info(f"Extracted directory name: {run_dir_name}")
-    else:
-        # Just directory name provided
-        run_dir_name = run_dir
-    
-    file_path = base_dir / "processed" / run_dir_name / filename
-    logger.info(f"Looking for file at: {file_path}")
+    logger.info(f"🔍 Looking for file at: {file_path}")
+    logger.info(f"📁 File exists: {file_path.exists()}")
     
     # Check if file exists
     if not file_path.exists():
-        logger.error(f"File not found: {file_path}")
+        logger.error(f"❌ File not found: {file_path}")
         
         # List what files DO exist in the directory
-        run_dir_path = base_dir / "processed" / run_dir_name
+        run_dir_path = base_dir / "processed" / run_dir
+        logger.info(f"📂 Checking directory: {run_dir_path}")
+        logger.info(f"📂 Directory exists: {run_dir_path.exists()}")
+        
         if run_dir_path.exists():
             existing_files = list(run_dir_path.glob("*"))
-            logger.error(f"Directory exists but file not found. Available files: {[f.name for f in existing_files]}")
+            logger.error(f"❌ Directory exists but file not found. Available files: {[f.name for f in existing_files]}")
             raise HTTPException(
                 status_code=404, 
-                detail=f"File '{filename}' not found in directory '{run_dir_name}'. Available files: {[f.name for f in existing_files]}"
+                detail=f"File '{filename}' not found in directory '{run_dir}'. Available files: {[f.name for f in existing_files]}"
             )
         else:
-            logger.error(f"Directory does not exist: {run_dir_path}")
+            logger.error(f"❌ Directory does not exist: {run_dir_path}")
+            # List all directories in processed
+            processed_dir = base_dir / "processed"
+            if processed_dir.exists():
+                all_dirs = [d.name for d in processed_dir.iterdir() if d.is_dir()]
+                logger.error(f"Available directories: {all_dirs}")
             raise HTTPException(
                 status_code=404, 
-                detail=f"Directory '{run_dir_name}' not found. Please complete IP lookup first."
+                detail=f"Directory '{run_dir}' not found. Please complete IP lookup first."
             )
     
-    logger.info(f"File found, serving: {file_path}")
+    logger.info(f"✅ File found, serving: {file_path}")
     
-    # Return file
+    # Return file with proper headers
     return FileResponse(
         path=str(file_path),
         filename=filename,
-        media_type='application/octet-stream'
+        media_type='application/octet-stream',
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
     )
