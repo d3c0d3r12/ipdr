@@ -216,8 +216,17 @@ const onLookupComplete = async (data) => {
       const formData = new FormData()
       formData.append('file', csvFile)
       
-      const storeResponse = await fetch(`${apiBase}/api/fir/store-ip-results/${encodeURIComponent(firNumber)}`, {
+      // Get auth token
+      const token = localStorage.getItem('auth_token')
+      
+      // Split FIR number (e.g., "254/25" -> "254" and "25")
+      const [firNum, year] = firNumber.split('/')
+      
+      const storeResponse = await fetch(`${apiBase}/api/fir/store-ip-results/${firNum}/${year}`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: formData
       })
       
