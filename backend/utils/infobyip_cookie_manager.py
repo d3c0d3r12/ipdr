@@ -94,9 +94,15 @@ class InfoByIPCookieManager:
                 logger.warning("⚠️ Cloudflare challenge detected - cookies invalid or expired")
                 return False
             
-            # Check if we got actual data
-            if "United States" in response.text or "Google" in response.text:
+            # Check if we got actual data (look for various indicators)
+            if any(indicator in response.text for indicator in ["United States", "Google", "IP Address Location", "Country", "infobyip.com"]):
                 logger.info("✅ Cookie validation successful - InfoByIP accessible")
+                self.last_check = datetime.now()
+                return True
+            
+            # If we got a 200 response and no Cloudflare challenge, consider it valid
+            if response.status_code == 200:
+                logger.info("✅ Cookies appear valid - got 200 response")
                 self.last_check = datetime.now()
                 return True
             
