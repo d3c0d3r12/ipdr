@@ -52,27 +52,15 @@ async def startup_event():
     else:
         logger.error("❌ Database connection failed - check your Neon configuration")
     
-    # Start background cookie refresh service
-    try:
-        from services.cookie_refresh_service import cookie_refresh_service
-        cookie_refresh_service.start()
-        logger.info("✅ Background cookie refresh service started")
-    except Exception as e:
-        logger.warning(f"⚠️ Could not start cookie refresh service: {e}")
-        logger.warning("Cookie auto-refresh will not be available")
+    # Cookie service disabled - using Selenium bypass instead
+    logger.info("ℹ️ Using Selenium bypass for IP lookups (localhost mode)")
+    logger.info("ℹ️ Cookie refresh service disabled (not needed with Selenium)")
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Run on application shutdown"""
     logger.info("👋 Shutting down IPDR Tracking Hub...")
-    
-    # Stop background cookie refresh service
-    try:
-        from services.cookie_refresh_service import cookie_refresh_service
-        cookie_refresh_service.stop()
-        logger.info("✅ Cookie refresh service stopped")
-    except Exception as e:
-        logger.warning(f"Could not stop cookie refresh service: {e}")
+    logger.info("✅ Shutdown complete")
 
 @app.get("/", tags=["Root"])
 def root():
