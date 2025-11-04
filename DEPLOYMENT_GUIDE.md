@@ -197,3 +197,4 @@ After frontend is deployed, update backend environment variable:
 
 Your app will be live at: **https://police-intel-frontend.onrender.com** 🎉
 
+

@@ -1,8 +1,11 @@
 <template>
   <div class="ip-lookup-page">
     <div class="page-header">
-      <h1>🔍 Unlimited IP Lookup System</h1>
-      <p class="subtitle">Advanced InfoByIP Integration with Cloudflare Bypass</p>
+      <div>
+        <h1>🔍 Unlimited IP Lookup System</h1>
+        <p class="subtitle">Advanced InfoByIP Integration with Cloudflare Bypass</p>
+      </div>
+      <CookieManager @cookiesUpdated="onCookiesUpdated" />
     </div>
 
     <!-- Run Directory Selection -->
@@ -336,6 +339,12 @@ const createMasterFile = async () => {
   }
 }
 
+// Cookie update handler
+const onCookiesUpdated = (status) => {
+  console.log('Cookies updated:', status)
+  // Could show a notification or refresh status
+}
+
 // Lifecycle
 onMounted(async () => {
   loadRecentRuns()
@@ -421,12 +430,18 @@ onMounted(async () => {
 }
 
 .page-header {
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 32px;
   padding: 24px;
   background: rgba(0, 255, 0, 0.05);
   border: 1px solid #0f0;
   border-radius: 8px;
+}
+
+.page-header > div:first-child {
+  flex: 1;
 }
 
 .page-header h1 {

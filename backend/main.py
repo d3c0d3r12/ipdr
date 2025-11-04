@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import upload, process, data, auth, tracking, ip_lookup, auth_secure, fir_management
+from routers import upload, process, data, auth, tracking, ip_lookup, auth_secure, fir_management, cookie_manager
 from core.config import ALLOWED_ORIGINS, ENVIRONMENT
 from core.db import test_connection
 import logging
@@ -38,6 +38,7 @@ app.include_router(process.router, prefix="/api/process", tags=["⚙️ Process"
 app.include_router(data.router, prefix="/api/data", tags=["📊 Data"])
 app.include_router(tracking.router, prefix="/api/tracking", tags=["👤 User Tracking"])
 app.include_router(ip_lookup.router, prefix="/api", tags=["🔍 IP Lookup"])
+app.include_router(cookie_manager.router, prefix="/api/cookies", tags=["🍪 Cookie Management"])
 
 @app.on_event("startup")
 async def startup_event():

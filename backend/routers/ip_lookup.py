@@ -28,6 +28,7 @@ except:
     SELENIUM_AVAILABLE = False
 from utils.infobyip_direct import InfoByIPDirect
 from utils.multi_source_ip_lookup import MultiSourceIPLookup
+from utils.infobyip_cookie_manager import cookie_manager
 
 router = APIRouter()
 
@@ -137,14 +138,27 @@ async def progress_generator(run_dir: Path, csv_path: Path):
         yield f"data: {json.dumps({'type': 'info', 'message': f'⚠️  This will take approximately {estimated_minutes:.1f} minutes', 'estimated_time': estimated_minutes})}\n\n"
         await asyncio.sleep(0.5)
         
-        # Initialize InfoByIP Direct API (works on Render!)
-        yield f"data: {json.dumps({'type': 'status', 'message': '🚀 Initializing InfoByIP API...', 'progress': 5})}\n\n"
+        # Check cookie status first
+        cookie_status = cookie_manager.get_status()
+        use_cookies = cookie_status.get('cookies_valid', False)
+        
+        if use_cookies:
+            yield f"data: {json.dumps({'type': 'status', 'message': '🍪 Using cookie-based access (Fast Mode)...', 'progress': 5})}\n\n"
+            logger.info("✅ Using cookies for InfoByIP access")
+        else:
+            yield f"data: {json.dumps({'type': 'status', 'message': '🚀 Initializing InfoByIP API...', 'progress': 5})}\n\n"
+            logger.info("⚠️ Cookies not available, using direct API")
+        
         await asyncio.sleep(0.3)
         
         infobyip = InfoByIPDirect()
         multi_lookup = MultiSourceIPLookup()
         
-        yield f"data: {json.dumps({'type': 'status', 'message': '🌐 Connecting to InfoByIP + Fallback sources...', 'progress': 10})}\n\n"
+        if use_cookies:
+            yield f"data: {json.dumps({'type': 'status', 'message': '✅ Cookie authentication successful!', 'progress': 10})}\n\n"
+        else:
+            yield f"data: {json.dumps({'type': 'status', 'message': '🌐 Connecting to InfoByIP + Fallback sources...', 'progress': 10})}\n\n"
+        
         await asyncio.sleep(0.3)
         
         # Test with first IP
@@ -172,11 +186,36 @@ async def progress_generator(run_dir: Path, csv_path: Path):
             yield f"data: {json.dumps({'type': 'progress', 'message': f'🔎 Looking up IP {idx}/{total_ips}: {ip}', 'current': idx, 'total': total_ips, 'progress': progress, 'ip': ip})}\n\n"
             
             try:
-                # Try InfoByIP first (primary source)
-                infobyip_result = infobyip.lookup_ip(ip)
+                # Try cookies first if available
+                if use_cookies:
+                    cookie_result = cookie_manager.lookup_ip(ip)
+                    
+                    # Check if cookies worked
+                    if cookie_result.get('error') == 'cookies_expired':
+                        logger.warning(f"Cookies expired for IP {ip}, switching to direct API")
+                        use_cookies = False
+                        yield f"data: {json.dumps({'type': 'warning', 'message': '⚠️ Cookies expired - switching to direct API', 'progress': progress})}\n\n"
+                        # Try direct API
+                        infobyip_result = infobyip.lookup_ip(ip)
+                    elif cookie_result.get('error'):
+                        logger.warning(f"Cookie lookup failed for IP {ip}: {cookie_result.get('message')}")
+                        # Try direct API as fallback
+                        infobyip_result = infobyip.lookup_ip(ip)
+                    else:
+                        # Cookies worked!
+                        infobyip_result = cookie_result
+                        logger.info(f"✅ Successfully looked up {ip} via cookies")
+                else:
+                    # Use direct API
+                    infobyip_result = infobyip.lookup_ip(ip)
                 
-                # Use multi-source fallback to GUARANTEE data
-                result = multi_lookup.lookup_with_fallback(ip, infobyip_result)
+                # Only use multi-source fallback if InfoByIP failed completely
+                if infobyip_result.get('country') == 'Unknown' or infobyip_result.get('error'):
+                    logger.info(f"InfoByIP failed for {ip}, using multi-source fallback")
+                    result = multi_lookup.lookup_with_fallback(ip, infobyip_result)
+                else:
+                    # InfoByIP succeeded (via cookies or direct API)
+                    result = infobyip_result
                 results.append(result)
                 
                 city = result.get("city", "Unknown")

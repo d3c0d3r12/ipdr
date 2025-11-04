@@ -184,3 +184,4 @@ If you see secrets in your GitHub repo:
 **Remember**: Secrets in environment variables (Render Dashboard) = Safe ✅  
 **Never**: Secrets in code or committed files = Dangerous ❌
 
+
