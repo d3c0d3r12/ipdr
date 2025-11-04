@@ -191,33 +191,14 @@ async def progress_generator(run_dir: Path, csv_path: Path):
             yield f"data: {json.dumps({'type': 'progress', 'message': f'🔎 Looking up IP {idx}/{total_ips}: {ip}', 'current': idx, 'total': total_ips, 'progress': progress, 'ip': ip})}\n\n"
             
             try:
-                # Try cookies first if available
-                if use_cookies:
-                    try:
-                        cookie_result = cookie_manager.lookup_ip(ip)
-                        
-                        # Check if cookies worked
-                        if cookie_result.get('error') == 'cookies_expired':
-                            logger.warning(f"Cookies expired for IP {ip}, switching to direct API")
-                            use_cookies = False
-                            yield f"data: {json.dumps({'type': 'warning', 'message': '⚠️ Cookies expired - switching to direct API', 'progress': progress})}\n\n"
-                            # Try direct API
-                            infobyip_result = infobyip.lookup_ip(ip)
-                        elif cookie_result.get('error'):
-                            logger.warning(f"Cookie lookup failed for IP {ip}: {cookie_result.get('message')}")
-                            # Try direct API as fallback
-                            infobyip_result = infobyip.lookup_ip(ip)
-                        else:
-                            # Cookies worked!
-                            infobyip_result = cookie_result
-                            logger.info(f"✅ Successfully looked up {ip} via cookies")
-                    except Exception as cookie_error:
-                        logger.warning(f"Cookie lookup error for {ip}: {cookie_error}, falling back to direct API")
-                        use_cookies = False
-                        infobyip_result = infobyip.lookup_ip(ip)
-                else:
-                    # Use direct API
-                    infobyip_result = infobyip.lookup_ip(ip)
+                # Use enhanced Selenium bypass (cookies not working due to Cloudflare 403)
+                from utils.enhanced_cloudflare_bypass import EnhancedCloudflareBypass
+                
+                if not hasattr(self, '_bypass_instance'):
+                    self._bypass_instance = EnhancedCloudflareBypass()
+                
+                infobyip_result = self._bypass_instance.bypass_and_fetch(ip)
+                logger.info(f"✅ Successfully looked up {ip} via Selenium bypass")
                 
                 # Only use multi-source fallback if InfoByIP had an ERROR (not if data is just Unknown)
                 if infobyip_result.get('error'):
