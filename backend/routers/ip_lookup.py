@@ -219,13 +219,14 @@ async def progress_generator(run_dir: Path, csv_path: Path):
                     # Use direct API
                     infobyip_result = infobyip.lookup_ip(ip)
                 
-                # Only use multi-source fallback if InfoByIP failed completely
-                if infobyip_result.get('country') == 'Unknown' or infobyip_result.get('error'):
-                    logger.info(f"InfoByIP failed for {ip}, using multi-source fallback")
+                # Only use multi-source fallback if InfoByIP had an ERROR (not if data is just Unknown)
+                if infobyip_result.get('error'):
+                    logger.info(f"InfoByIP error for {ip}, using multi-source fallback")
                     result = multi_lookup.lookup_with_fallback(ip, infobyip_result)
                 else:
-                    # InfoByIP succeeded (via cookies or direct API)
+                    # Use InfoByIP result even if some fields are Unknown
                     result = infobyip_result
+                    logger.info(f"✅ Using InfoByIP data for {ip} (Country: {infobyip_result.get('country', 'Unknown')})")
                 results.append(result)
                 
                 city = result.get("city", "Unknown")

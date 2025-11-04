@@ -178,7 +178,7 @@ class InfoByIPCookieManager:
             # Extract data from InfoByIP page
             data = {
                 "ip": ip,
-                "source": "InfoByIP",
+                "source": "infobyip",  # Lowercase to match router check
                 "country": "Unknown",
                 "city": "Unknown",
                 "region": "Unknown",
