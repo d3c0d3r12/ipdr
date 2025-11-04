@@ -83,6 +83,12 @@ class InfoByIPRequestsBypass:
                     time.sleep(5 * (attempt + 1))
                     continue
                 
+                # Check for Cloudflare block page
+                if "Sorry, you have been blocked" in response.text:
+                    logger.warning(f"⚠️ Cloudflare blocked request for {ip}, retrying...")
+                    time.sleep(5 * (attempt + 1))
+                    continue
+                
                 # Parse the response
                 data = self._parse_html(response.text, ip)
                 
@@ -91,7 +97,10 @@ class InfoByIPRequestsBypass:
                     logger.info(f"✅ Successfully looked up {ip} (Country: {data.get('country')})")
                     return data
                 else:
-                    logger.warning(f"⚠️ No data found for {ip}, retrying...")
+                    # Log HTML snippet for debugging
+                    logger.warning(f"⚠️ No data found for {ip}")
+                    logger.debug(f"HTML preview: {response.text[:500]}")
+                    logger.warning(f"Retrying...")
                     time.sleep(2)
                     continue
                 

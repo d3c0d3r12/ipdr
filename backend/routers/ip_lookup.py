@@ -191,10 +191,15 @@ async def progress_generator(run_dir: Path, csv_path: Path):
             yield f"data: {json.dumps({'type': 'progress', 'message': f'🔎 Looking up IP {idx}/{total_ips}: {ip}', 'current': idx, 'total': total_ips, 'progress': progress, 'ip': ip})}\n\n"
             
             try:
-                # Use cloudscraper-based bypass (works on Render without browser)
-                from utils.infobyip_requests_bypass import infobyip_bypass
+                # Use Selenium bypass (proven working on localhost)
+                from utils.enhanced_cloudflare_bypass import EnhancedCloudflareBypass
                 
-                infobyip_result = infobyip_bypass.lookup_ip(ip)
+                # Create bypass instance if not exists
+                if not hasattr(lookup_ips, '_bypass_instance'):
+                    lookup_ips._bypass_instance = EnhancedCloudflareBypass()
+                
+                # Lookup IP using Selenium
+                infobyip_result = lookup_ips._bypass_instance.bypass_and_fetch(ip)
                 
                 # Only use multi-source fallback if InfoByIP had an ERROR (not if data is just Unknown)
                 if infobyip_result.get('error'):
