@@ -162,7 +162,7 @@ async def progress_generator(run_dir: Path, csv_path: Path):
         if use_cookies:
             yield f"data: {json.dumps({'type': 'status', 'message': '✅ Cookie authentication successful!', 'progress': 10})}\n\n"
         else:
-            yield f"data: {json.dumps({'type': 'status', 'message': '🌐 Connecting to InfoByIP + Fallback sources...', 'progress': 10})}\n\n"
+            yield f"data: {json.dumps({'type': 'status', 'message': '🌐 Connecting to InfoByIP (Selenium)...', 'progress': 10})}\n\n"
         
         await asyncio.sleep(0.3)
         
@@ -195,11 +195,11 @@ async def progress_generator(run_dir: Path, csv_path: Path):
                 from utils.enhanced_cloudflare_bypass import EnhancedCloudflareBypass
                 
                 # Create bypass instance if not exists
-                if not hasattr(lookup_ips, '_bypass_instance'):
-                    lookup_ips._bypass_instance = EnhancedCloudflareBypass(headless=True, verbose=False)
+                if not hasattr(progress_generator, '_bypass_instance'):
+                    progress_generator._bypass_instance = EnhancedCloudflareBypass(headless=True, verbose=False)
                 
                 # Lookup IP using Selenium
-                infobyip_result = lookup_ips._bypass_instance.lookup_ip(ip)
+                infobyip_result = progress_generator._bypass_instance.lookup_ip(ip)
                 
                 # Only use multi-source fallback if InfoByIP had an ERROR (not if data is just Unknown)
                 if infobyip_result.get('error'):
