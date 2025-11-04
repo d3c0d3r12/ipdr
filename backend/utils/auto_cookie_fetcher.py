@@ -104,30 +104,34 @@ class AutoCookieFetcher:
             # Wait for Cloudflare challenge to complete
             logger.info("⏳ Waiting for Cloudflare challenge...")
             start_time = time.time()
+            cloudflare_passed = False
             
             while time.time() - start_time < max_wait:
                 # Check if page has loaded (Cloudflare passed)
                 try:
-                    # Look for content that appears after Cloudflare
-                    if "United States" in self.driver.page_source or "Google" in self.driver.page_source:
-                        logger.info("✅ Cloudflare challenge passed!")
-                        break
+                    page_source = self.driver.page_source
                     
                     # Check if still on Cloudflare challenge
-                    if "Checking your browser" in self.driver.page_source or "Just a moment" in self.driver.page_source:
+                    if "Checking your browser" in page_source or "Just a moment" in page_source:
                         logger.info("⏳ Still on Cloudflare challenge...")
-                        time.sleep(2)
+                        time.sleep(3)
                         continue
                     
-                    # Page loaded
-                    break
+                    # Look for content that appears after Cloudflare
+                    if "United States" in page_source or "Google" in page_source or "IP Address Location" in page_source:
+                        logger.info("✅ Cloudflare challenge passed!")
+                        cloudflare_passed = True
+                        break
+                    
+                    # Wait and check again
+                    time.sleep(2)
                     
                 except Exception as e:
                     logger.warning(f"Error checking page: {e}")
                     time.sleep(2)
             
             # Check if we timed out
-            if time.time() - start_time >= max_wait:
+            if not cloudflare_passed:
                 logger.error("❌ Timeout waiting for Cloudflare")
                 self.cleanup()
                 return {
@@ -136,8 +140,24 @@ class AutoCookieFetcher:
                     "message": "Cloudflare challenge took too long. Try again."
                 }
             
-            # Wait a bit more to ensure cookies are set
-            time.sleep(3)
+            # Wait longer to ensure cf_clearance cookie is set
+            logger.info("⏳ Waiting for cf_clearance cookie to be set...")
+            time.sleep(5)
+            
+            # Check multiple times for cf_clearance cookie
+            for attempt in range(3):
+                cookies = self.driver.get_cookies()
+                cookie_names = [c['name'] for c in cookies]
+                
+                if 'cf_clearance' in cookie_names:
+                    logger.info("✅ cf_clearance cookie found!")
+                    break
+                else:
+                    logger.warning(f"⚠️ cf_clearance not found yet (attempt {attempt + 1}/3), waiting...")
+                    time.sleep(3)
+            
+            # Final wait to ensure all cookies are stable
+            time.sleep(2)
             
             # Extract cookies
             logger.info("🍪 Extracting cookies...")
@@ -158,8 +178,13 @@ class AutoCookieFetcher:
                 cookie_dict[cookie['name']] = cookie['value']
             
             # Check for essential cookies
-            if 'cf_clearance' not in cookie_dict:
-                logger.warning("⚠️ cf_clearance cookie not found")
+            has_cf_clearance = 'cf_clearance' in cookie_dict
+            
+            if not has_cf_clearance:
+                logger.warning("⚠️ cf_clearance cookie not found - cookies may not work properly")
+                logger.info(f"Available cookies: {list(cookie_dict.keys())}")
+            else:
+                logger.info(f"✅ cf_clearance cookie found: {cookie_dict['cf_clearance'][:20]}...")
             
             logger.info(f"✅ Extracted {len(cookie_dict)} cookies")
             
@@ -169,12 +194,15 @@ class AutoCookieFetcher:
             # Cleanup
             self.cleanup()
             
+            # Return success even without cf_clearance, but warn
             return {
                 "success": True,
                 "cookies": cookies,
                 "cookie_count": len(cookies),
-                "message": f"Successfully fetched {len(cookies)} cookies!",
-                "has_cf_clearance": 'cf_clearance' in cookie_dict
+                "message": f"Successfully fetched {len(cookies)} cookies!" + 
+                          ("" if has_cf_clearance else " (Warning: cf_clearance not found)"),
+                "has_cf_clearance": has_cf_clearance,
+                "warning": None if has_cf_clearance else "cf_clearance cookie not found - may need to retry"
             }
             
         except Exception as e:

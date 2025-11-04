@@ -103,28 +103,48 @@ class CookieRefreshService:
             # Import here to avoid circular imports
             from utils.auto_cookie_fetcher import auto_fetcher
             
-            # Fetch cookies
-            result = auto_fetcher.fetch_cookies(headless=True, max_wait=45)
-            
-            if result.get('success'):
-                self.last_refresh = datetime.now(timezone.utc)
-                self.next_refresh = self.last_refresh + timedelta(seconds=self.refresh_interval)
-                self.refresh_count += 1
+            # Fetch cookies with retry if cf_clearance not found
+            max_attempts = 2
+            for attempt in range(max_attempts):
+                if attempt > 0:
+                    logger.info(f"🔄 Retry attempt {attempt + 1}/{max_attempts}...")
+                    time.sleep(10)  # Wait before retry
                 
-                logger.info(f"✅ Cookies refreshed successfully! (Count: {self.refresh_count})")
-                logger.info(f"📅 Next refresh: {self.next_refresh.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+                result = auto_fetcher.fetch_cookies(headless=True, max_wait=45)
                 
-                # Reload cookies into cookie manager
-                try:
-                    from utils.infobyip_cookie_manager import cookie_manager
-                    cookie_manager.load_cookies()
-                    logger.info("✅ Cookies loaded into cookie manager")
-                except Exception as e:
-                    logger.warning(f"Could not load into cookie manager: {e}")
-                
-            else:
-                logger.error(f"❌ Cookie refresh failed: {result.get('message')}")
-                self.error_count += 1
+                if result.get('success'):
+                    # Check if we have cf_clearance
+                    has_cf_clearance = result.get('has_cf_clearance', False)
+                    
+                    if has_cf_clearance or attempt == max_attempts - 1:
+                        # Success with cf_clearance, or last attempt
+                        self.last_refresh = datetime.now(timezone.utc)
+                        self.next_refresh = self.last_refresh + timedelta(seconds=self.refresh_interval)
+                        self.refresh_count += 1
+                        
+                        if has_cf_clearance:
+                            logger.info(f"✅ Cookies refreshed successfully with cf_clearance! (Count: {self.refresh_count})")
+                        else:
+                            logger.warning(f"⚠️ Cookies refreshed but cf_clearance missing (Count: {self.refresh_count})")
+                        
+                        logger.info(f"📅 Next refresh: {self.next_refresh.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+                        
+                        # Reload cookies into cookie manager
+                        try:
+                            from utils.infobyip_cookie_manager import cookie_manager
+                            cookie_manager.load_cookies()
+                            logger.info("✅ Cookies loaded into cookie manager")
+                        except Exception as e:
+                            logger.warning(f"Could not load into cookie manager: {e}")
+                        
+                        break  # Success, exit retry loop
+                    else:
+                        logger.warning(f"⚠️ cf_clearance not found, will retry...")
+                        continue
+                else:
+                    logger.error(f"❌ Cookie refresh failed: {result.get('message')}")
+                    if attempt == max_attempts - 1:
+                        self.error_count += 1
                 
         except Exception as e:
             logger.error(f"❌ Error refreshing cookies: {e}")
