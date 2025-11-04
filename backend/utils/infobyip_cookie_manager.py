@@ -183,13 +183,15 @@ class InfoByIPCookieManager:
                 "city": "Unknown",
                 "region": "Unknown",
                 "isp": "Unknown",
+                "organization": "Unknown",
                 "postal_code": "",
                 "latitude": "",
                 "longitude": "",
                 "timezone": ""
             }
             
-            # Find all table rows
+            # Try multiple parsing methods
+            # Method 1: Find table rows
             rows = soup.find_all('tr')
             for row in rows:
                 cells = row.find_all('td')
@@ -197,24 +199,46 @@ class InfoByIPCookieManager:
                     label = cells[0].get_text(strip=True).lower()
                     value = cells[1].get_text(strip=True)
                     
-                    if 'country' in label:
-                        data['country'] = value
-                    elif 'city' in label:
-                        data['city'] = value
-                    elif 'region' in label or 'state' in label:
-                        data['region'] = value
-                    elif 'isp' in label or 'organization' in label:
-                        data['isp'] = value
-                    elif 'postal' in label or 'zip' in label:
-                        data['postal_code'] = value
-                    elif 'latitude' in label:
-                        data['latitude'] = value
-                    elif 'longitude' in label:
-                        data['longitude'] = value
-                    elif 'timezone' in label:
-                        data['timezone'] = value
+                    if value and value != '-':  # Only update if we have a value
+                        if 'country' in label:
+                            data['country'] = value
+                        elif 'city' in label:
+                            data['city'] = value
+                        elif 'region' in label or 'state' in label:
+                            data['region'] = value
+                        elif 'isp' in label:
+                            data['isp'] = value
+                        elif 'organization' in label:
+                            data['organization'] = value
+                        elif 'postal' in label or 'zip' in label:
+                            data['postal_code'] = value
+                        elif 'latitude' in label:
+                            data['latitude'] = value
+                        elif 'longitude' in label:
+                            data['longitude'] = value
+                        elif 'timezone' in label or 'time zone' in label:
+                            data['timezone'] = value
             
-            logger.info(f"✅ Successfully looked up IP {ip} via cookies")
+            # Method 2: Try finding specific divs/spans (InfoByIP might use different structure)
+            if data['country'] == 'Unknown':
+                # Try alternative selectors
+                country_elem = soup.find(string=lambda text: text and 'Country' in text)
+                if country_elem:
+                    parent = country_elem.find_parent()
+                    if parent:
+                        next_elem = parent.find_next_sibling()
+                        if next_elem:
+                            data['country'] = next_elem.get_text(strip=True)
+            
+            # Log what we found
+            found_data = sum(1 for v in [data['country'], data['city'], data['region'], data['isp']] if v != 'Unknown')
+            logger.info(f"✅ Successfully looked up IP {ip} via cookies (found {found_data}/4 fields)")
+            
+            # If we didn't find any data, log the HTML structure for debugging
+            if found_data == 0:
+                logger.warning(f"⚠️ No data extracted for {ip}. Page might have different structure.")
+                logger.debug(f"HTML preview: {response.text[:500]}")
+            
             return data
             
         except Exception as e:
