@@ -196,10 +196,10 @@ async def progress_generator(run_dir: Path, csv_path: Path):
                 
                 # Create bypass instance if not exists
                 if not hasattr(lookup_ips, '_bypass_instance'):
-                    lookup_ips._bypass_instance = EnhancedCloudflareBypass()
+                    lookup_ips._bypass_instance = EnhancedCloudflareBypass(headless=True, verbose=False)
                 
                 # Lookup IP using Selenium
-                infobyip_result = lookup_ips._bypass_instance.bypass_and_fetch(ip)
+                infobyip_result = lookup_ips._bypass_instance.lookup_ip(ip)
                 
                 # Only use multi-source fallback if InfoByIP had an ERROR (not if data is just Unknown)
                 if infobyip_result.get('error'):

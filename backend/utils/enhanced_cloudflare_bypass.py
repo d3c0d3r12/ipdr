@@ -683,6 +683,79 @@ class EnhancedCloudflareBypass:
             'cookies_saved': len(self.session_cookies)
         }
     
+    def lookup_ip(self, ip: str) -> Dict[str, Any]:
+        """
+        Lookup IP information from InfoByIP.com
+        
+        Args:
+            ip: IP address to lookup
+            
+        Returns:
+            Dictionary with IP information
+        """
+        url = f"https://www.infobyip.com/ip-{ip}.html"
+        
+        try:
+            html = self.bypass_and_fetch(url, max_challenge_wait=30)
+            
+            if not html:
+                return {
+                    'ip': ip,
+                    'error': 'Failed to fetch page',
+                    'source': 'infobyip'
+                }
+            
+            # Parse HTML
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html, 'html.parser')
+            
+            # Extract data from table
+            data = {
+                'ip': ip,
+                'country': 'Unknown',
+                'region': 'Unknown',
+                'city': 'Unknown',
+                'isp': 'Unknown',
+                'postal_code': 'Unknown',
+                'latitude': 'Unknown',
+                'longitude': 'Unknown',
+                'source': 'infobyip'
+            }
+            
+            # Find all table rows
+            rows = soup.find_all('tr')
+            for row in rows:
+                cells = row.find_all('td')
+                if len(cells) >= 2:
+                    label = cells[0].get_text(strip=True).lower()
+                    value = cells[1].get_text(strip=True)
+                    
+                    if 'country' in label and 'code' not in label:
+                        data['country'] = value
+                    elif 'region' in label or 'state' in label:
+                        data['region'] = value
+                    elif 'city' in label:
+                        data['city'] = value
+                    elif 'isp' in label or 'organization' in label:
+                        data['isp'] = value
+                    elif 'postal' in label or 'zip' in label:
+                        data['postal_code'] = value
+                    elif 'latitude' in label:
+                        data['latitude'] = value
+                    elif 'longitude' in label:
+                        data['longitude'] = value
+            
+            self.log(f"IP lookup successful: {ip} -> {data['country']}, {data['city']}", "SUCCESS")
+            return data
+            
+        except Exception as e:
+            self.log(f"IP lookup failed for {ip}: {e}", "ERROR")
+            return {
+                'ip': ip,
+                'error': str(e),
+                'source': 'infobyip'
+            }
+    
     def screenshot(self, filename: str = "bypass_screenshot.png"):
         """Take screenshot"""
         if self.driver:
