@@ -191,14 +191,10 @@ async def progress_generator(run_dir: Path, csv_path: Path):
             yield f"data: {json.dumps({'type': 'progress', 'message': f'🔎 Looking up IP {idx}/{total_ips}: {ip}', 'current': idx, 'total': total_ips, 'progress': progress, 'ip': ip})}\n\n"
             
             try:
-                # Use enhanced Selenium bypass (cookies not working due to Cloudflare 403)
-                from utils.enhanced_cloudflare_bypass import EnhancedCloudflareBypass
+                # Use cloudscraper-based bypass (works on Render without browser)
+                from utils.infobyip_requests_bypass import infobyip_bypass
                 
-                if not hasattr(self, '_bypass_instance'):
-                    self._bypass_instance = EnhancedCloudflareBypass()
-                
-                infobyip_result = self._bypass_instance.bypass_and_fetch(ip)
-                logger.info(f"✅ Successfully looked up {ip} via Selenium bypass")
+                infobyip_result = infobyip_bypass.lookup_ip(ip)
                 
                 # Only use multi-source fallback if InfoByIP had an ERROR (not if data is just Unknown)
                 if infobyip_result.get('error'):
