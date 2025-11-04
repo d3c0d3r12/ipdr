@@ -6,7 +6,7 @@ Handles user authentication, session management, and security
 import hashlib
 import secrets
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 from models.user_auth import User, UserSession, LoginAttempt, UserActivity
@@ -109,7 +109,7 @@ class AuthService:
             full_name=full_name,
             role=role,
             created_by=created_by,
-            last_password_change=datetime.utcnow()
+            last_password_change=datetime.now(timezone.utc)
         )
         
         db.add(user)
@@ -186,7 +186,7 @@ class AuthService:
         
         # Success! Reset failed attempts
         user.failed_login_attempts = 0
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(timezone.utc)
         
         # Create session token
         session_token = secrets.token_urlsafe(64)
@@ -203,8 +203,8 @@ class AuthService:
             device_type=ua.device.family,
             browser=ua.browser.family,
             os=ua.os.family,
-            expires_at=datetime.utcnow() + timedelta(minutes=AuthService.ACCESS_TOKEN_EXPIRE_MINUTES),
-            last_activity=datetime.utcnow()
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=AuthService.ACCESS_TOKEN_EXPIRE_MINUTES),
+            last_activity=datetime.now(timezone.utc)
         )
         
         # Log successful attempt
@@ -226,8 +226,8 @@ class AuthService:
             "email": user.email,
             "role": user.role,
             "session_token": session_token,
-            "exp": datetime.utcnow() + timedelta(minutes=AuthService.ACCESS_TOKEN_EXPIRE_MINUTES),
-            "iat": datetime.utcnow()
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=AuthService.ACCESS_TOKEN_EXPIRE_MINUTES),
+            "iat": datetime.now(timezone.utc)
         }
         
         return jwt.encode(payload, AuthService.SECRET_KEY, algorithm=AuthService.ALGORITHM)
@@ -255,13 +255,13 @@ class AuthService:
             return None
         
         # Check if expired
-        if session.expires_at < datetime.utcnow():
+        if session.expires_at < datetime.now(timezone.utc):
             session.is_active = False
             db.commit()
             return None
         
         # Update last activity
-        session.last_activity = datetime.utcnow()
+        session.last_activity = datetime.now(timezone.utc)
         db.commit()
         
         # Get user

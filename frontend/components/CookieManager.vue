@@ -40,27 +40,55 @@
           <!-- Upload Section -->
           <div class="upload-section">
             <h3>Upload New Cookies</h3>
-            <div class="upload-area">
-              <input
-                type="file"
-                ref="fileInput"
-                accept=".json"
-                @change="handleFileSelect"
-                style="display: none"
-              />
-              <button @click="$refs.fileInput.click()" class="btn-upload">
-                📁 Select Cookie File
-              </button>
-              <p v-if="selectedFile" class="file-name">{{ selectedFile.name }}</p>
+            
+            <!-- Method 1: File Upload -->
+            <div class="upload-method">
+              <h4>Method 1: Upload File</h4>
+              <div class="upload-area">
+                <input
+                  type="file"
+                  ref="fileInput"
+                  accept=".json"
+                  @change="handleFileSelect"
+                  style="display: none"
+                />
+                <button @click="$refs.fileInput.click()" class="btn-upload">
+                  📁 Select Cookie File
+                </button>
+                <p v-if="selectedFile" class="file-name">{{ selectedFile.name }}</p>
+                <button
+                  v-if="selectedFile"
+                  @click="uploadCookies"
+                  class="btn-upload-confirm"
+                  :disabled="uploading"
+                >
+                  {{ uploading ? '⏳ Uploading...' : '✅ Upload & Validate' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Method 2: Paste JSON -->
+            <div class="upload-method">
+              <h4>Method 2: Paste Cookies (Any Browser)</h4>
+              <textarea
+                v-model="pastedCookies"
+                placeholder='Paste cookies JSON here, e.g.:
+{
+  "cf_clearance": "your_value_here",
+  "__cf_bm": "your_value_here"
+}'
+                class="cookie-textarea"
+                rows="6"
+              ></textarea>
               <button
-                v-if="selectedFile"
-                @click="uploadCookies"
+                @click="uploadPastedCookies"
                 class="btn-upload-confirm"
-                :disabled="uploading"
+                :disabled="uploading || !pastedCookies"
               >
                 {{ uploading ? '⏳ Uploading...' : '✅ Upload & Validate' }}
               </button>
             </div>
+
             <p v-if="uploadMessage" class="upload-message" :class="uploadMessageClass">
               {{ uploadMessage }}
             </p>
@@ -68,48 +96,84 @@
 
           <!-- Instructions -->
           <div class="instructions-section">
-            <h3>📖 How to Export Cookies</h3>
-            <div class="instructions-steps">
-              <div class="step">
-                <span class="step-number">1</span>
-                <div class="step-content">
-                  <h4>Install EditThisCookie Extension</h4>
-                  <p>Add the extension to Chrome</p>
-                  <a href="https://chrome.google.com/webstore/detail/editthiscookie/fngmhnnpilhplaeedifhccceomclgfbg" target="_blank" class="btn-link">
-                    Open Chrome Web Store
-                  </a>
+            <h3>📖 How to Export Cookies (Works in Any Browser)</h3>
+            
+            <!-- Option A: Extension Method -->
+            <div class="instruction-option">
+              <h4>Option A: Using Extension (Chrome/Brave/Edge)</h4>
+              <div class="instructions-steps">
+                <div class="step">
+                  <span class="step-number">1</span>
+                  <div class="step-content">
+                    <h4>Install EditThisCookie Extension</h4>
+                    <p>Works in Chrome, Brave, Edge (Chromium browsers)</p>
+                    <a href="https://chrome.google.com/webstore/detail/editthiscookie/fngmhnnpilhplaeedifhccceomclgfbg" target="_blank" class="btn-link">
+                      Open Chrome Web Store
+                    </a>
+                  </div>
+                </div>
+                <div class="step">
+                  <span class="step-number">2</span>
+                  <div class="step-content">
+                    <h4>Visit InfoByIP & Solve Captcha</h4>
+                    <a href="https://www.infobyip.com/ip-8.8.8.8.html" target="_blank" class="btn-link">
+                      Open InfoByIP
+                    </a>
+                  </div>
+                </div>
+                <div class="step">
+                  <span class="step-number">3</span>
+                  <div class="step-content">
+                    <h4>Export & Upload</h4>
+                    <p>Click extension → Export → Paste in Method 2 above</p>
+                  </div>
                 </div>
               </div>
-              <div class="step">
-                <span class="step-number">2</span>
-                <div class="step-content">
-                  <h4>Visit InfoByIP & Solve Captcha</h4>
-                  <p>Go to InfoByIP and complete the Cloudflare challenge</p>
-                  <a href="https://www.infobyip.com/ip-8.8.8.8.html" target="_blank" class="btn-link">
-                    Open InfoByIP
-                  </a>
+            </div>
+
+            <!-- Option B: Manual Method -->
+            <div class="instruction-option">
+              <h4>Option B: Manual Export (Any Browser - Firefox, Safari, etc.)</h4>
+              <div class="instructions-steps">
+                <div class="step">
+                  <span class="step-number">1</span>
+                  <div class="step-content">
+                    <h4>Visit InfoByIP</h4>
+                    <a href="https://www.infobyip.com/ip-8.8.8.8.html" target="_blank" class="btn-link">
+                      Open InfoByIP
+                    </a>
+                    <p>Solve the Cloudflare captcha</p>
+                  </div>
                 </div>
-              </div>
-              <div class="step">
-                <span class="step-number">3</span>
-                <div class="step-content">
-                  <h4>Export Cookies</h4>
-                  <p>Click EditThisCookie icon → Click Export button</p>
-                  <p class="note">Cookies will be copied to clipboard</p>
+                <div class="step">
+                  <span class="step-number">2</span>
+                  <div class="step-content">
+                    <h4>Open DevTools</h4>
+                    <p>Press <code>F12</code> or right-click → Inspect</p>
+                  </div>
                 </div>
-              </div>
-              <div class="step">
-                <span class="step-number">4</span>
-                <div class="step-content">
-                  <h4>Save as JSON File</h4>
-                  <p>Paste into text file and save as: <code>infobyip_cookies.json</code></p>
+                <div class="step">
+                  <span class="step-number">3</span>
+                  <div class="step-content">
+                    <h4>Find Cookies</h4>
+                    <p>Go to "Application" tab (Chrome/Brave) or "Storage" tab (Firefox)</p>
+                    <p>Click "Cookies" → "https://www.infobyip.com"</p>
+                  </div>
                 </div>
-              </div>
-              <div class="step">
-                <span class="step-number">5</span>
-                <div class="step-content">
-                  <h4>Upload Here</h4>
-                  <p>Use the upload button above to upload your cookie file</p>
+                <div class="step">
+                  <span class="step-number">4</span>
+                  <div class="step-content">
+                    <h4>Copy Cookie Values</h4>
+                    <p>Find <code>cf_clearance</code> and <code>__cf_bm</code></p>
+                    <p>Copy their values</p>
+                  </div>
+                </div>
+                <div class="step">
+                  <span class="step-number">5</span>
+                  <div class="step-content">
+                    <h4>Paste in Method 2</h4>
+                    <p>Use the textarea above to paste cookies</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -130,6 +194,7 @@ const apiBase = config.public.apiBase || 'http://localhost:8000'
 const showModal = ref(false)
 const cookieStatus = ref({})
 const selectedFile = ref(null)
+const pastedCookies = ref('')
 const uploading = ref(false)
 const validating = ref(false)
 const uploadMessage = ref('')
@@ -215,6 +280,59 @@ const uploadCookies = async () => {
       uploadMessageClass.value = 'success'
       cookieStatus.value = result.status
       selectedFile.value = null
+      
+      // Emit event to parent
+      emit('cookiesUpdated', result.status)
+    } else {
+      uploadMessage.value = `❌ ${result.detail || 'Upload failed'}`
+      uploadMessageClass.value = 'error'
+    }
+  } catch (error) {
+    console.error('Error uploading cookies:', error)
+    uploadMessage.value = '❌ Upload failed. Please try again.'
+    uploadMessageClass.value = 'error'
+  } finally {
+    uploading.value = false
+  }
+}
+
+const uploadPastedCookies = async () => {
+  if (!pastedCookies.value) return
+
+  uploading.value = true
+  uploadMessage.value = ''
+
+  try {
+    // Parse JSON to validate
+    let cookiesJson
+    try {
+      cookiesJson = JSON.parse(pastedCookies.value)
+    } catch (e) {
+      uploadMessage.value = '❌ Invalid JSON format. Please check your cookies.'
+      uploadMessageClass.value = 'error'
+      uploading.value = false
+      return
+    }
+
+    // Create a blob and file from the JSON
+    const blob = new Blob([JSON.stringify(cookiesJson)], { type: 'application/json' })
+    const file = new File([blob], 'pasted_cookies.json', { type: 'application/json' })
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await fetch(`${apiBase}/api/cookies/upload`, {
+      method: 'POST',
+      body: formData
+    })
+
+    const result = await response.json()
+
+    if (response.ok) {
+      uploadMessage.value = '✅ Cookies uploaded and validated successfully!'
+      uploadMessageClass.value = 'success'
+      cookieStatus.value = result.status
+      pastedCookies.value = ''
       
       // Emit event to parent
       emit('cookiesUpdated', result.status)
@@ -380,6 +498,52 @@ onMounted(() => {
   color: #fff;
   margin-bottom: 12px;
   font-size: 16px;
+}
+
+.upload-method {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
+.upload-method h4 {
+  color: #3b82f6;
+  margin: 0 0 12px 0;
+  font-size: 14px;
+}
+
+.cookie-textarea {
+  width: 100%;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  resize: vertical;
+  margin-bottom: 12px;
+}
+
+.cookie-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.instruction-option {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
+.instruction-option h4 {
+  color: #22c55e;
+  margin: 0 0 12px 0;
+  font-size: 14px;
 }
 
 .status-card {
