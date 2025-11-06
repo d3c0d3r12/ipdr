@@ -170,8 +170,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import IPLookupTerminal from '~/components/IPLookupTerminal.vue'
+
+// Composables
+const { authenticatedFetch, restoreState } = useAuthenticatedFetch()
 
 // State
 const runDirInput = ref('')
@@ -183,6 +186,16 @@ const mergingMaster = ref(false)
 const masterFile = ref(null)
 const fixingFile = ref(false)
 const fixedFile = ref(null)
+
+// Watch and save state to localStorage when it changes
+watch([selectedRunDir, results, masterFile, fixedFile], () => {
+  if (process.client) {
+    if (selectedRunDir.value) localStorage.setItem('current_run_dir', selectedRunDir.value)
+    if (results.value) localStorage.setItem('current_results', JSON.stringify(results.value))
+    if (masterFile.value) localStorage.setItem('current_master_file', JSON.stringify(masterFile.value))
+    if (fixedFile.value) localStorage.setItem('current_fixed_file', JSON.stringify(fixedFile.value))
+  }
+})
 
 // Methods
 const loadRunDirectory = async () => {
@@ -364,27 +377,17 @@ const createMasterFile = async () => {
     
     const config = useRuntimeConfig()
     const apiBase = config.public.apiBase
-    const token = localStorage.getItem('auth_token')
-    
-    if (!token) {
-      throw new Error('Not authenticated. Please login first.')
-    }
     
     const formData = new FormData()
     formData.append('run_dir', selectedRunDir.value)
     
-    const response = await fetch(`${apiBase}/api/merge-master-file`, {
+    // Use authenticatedFetch - automatically handles 401 and preserves state
+    const response = await authenticatedFetch(`${apiBase}/api/merge-master-file`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
       body: formData
     })
     
     if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('Authentication failed. Please login again.')
-      }
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
       throw new Error(error.detail || 'Failed to create master file')
     }
@@ -417,27 +420,17 @@ const fixToStart = async () => {
     
     const config = useRuntimeConfig()
     const apiBase = config.public.apiBase
-    const token = localStorage.getItem('auth_token')
-    
-    if (!token) {
-      throw new Error('Not authenticated. Please login first.')
-    }
     
     const formData = new FormData()
     formData.append('run_dir', selectedRunDir.value)
     
-    const response = await fetch(`${apiBase}/api/fix-to-start`, {
+    // Use authenticatedFetch - automatically handles 401 and preserves state
+    const response = await authenticatedFetch(`${apiBase}/api/fix-to-start`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
       body: formData
     })
     
     if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('Authentication failed. Please login again.')
-      }
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
       throw new Error(error.detail || 'Failed to create fixed file')
     }
@@ -464,6 +457,48 @@ const onCookiesUpdated = (status) => {
 
 // Lifecycle
 onMounted(async () => {
+  // Restore preserved state if user was redirected to login
+  const preserved = restoreState()
+  if (preserved && preserved.pageData) {
+    console.log('🔄 Restoring preserved state...')
+    
+    // Restore run directory
+    if (preserved.pageData.runDir) {
+      selectedRunDir.value = preserved.pageData.runDir
+      runDirInput.value = preserved.pageData.runDir
+    }
+    
+    // Restore results
+    if (preserved.pageData.results) {
+      try {
+        results.value = JSON.parse(preserved.pageData.results)
+      } catch (e) {
+        console.error('Failed to restore results:', e)
+      }
+    }
+    
+    // Restore master file
+    if (preserved.pageData.masterFile) {
+      try {
+        masterFile.value = JSON.parse(preserved.pageData.masterFile)
+      } catch (e) {
+        console.error('Failed to restore master file:', e)
+      }
+    }
+    
+    // Restore fixed file
+    if (preserved.pageData.fixedFile) {
+      try {
+        fixedFile.value = JSON.parse(preserved.pageData.fixedFile)
+      } catch (e) {
+        console.error('Failed to restore fixed file:', e)
+      }
+    }
+    
+    console.log('✅ State restored successfully!')
+    alert('✅ Welcome back! Your research data has been restored.')
+  }
+  
   loadRecentRuns()
 
   // Check if run_dir is passed in query params
