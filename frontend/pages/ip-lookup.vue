@@ -158,7 +158,7 @@
             <div class="final-report-info">
               <h4>📊 Next Step: Final Report Generator</h4>
               <p>Upload <strong>fully_fixed.csv</strong> to the Final Report Generator to get your complete analysis report.</p>
-              <a href="/Final Report Generator_V1.html" target="_blank" class="btn-final-report">
+              <a href="/final-report-generator.html" target="_blank" class="btn-final-report">
                 🎯 Open Final Report Generator
               </a>
             </div>
