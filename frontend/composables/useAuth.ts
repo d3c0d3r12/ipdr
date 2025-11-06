@@ -34,7 +34,7 @@ export const useAuth = () => {
   // Update last activity time
   const updateActivity = () => {
     lastActivityTime = Date.now()
-    if (process.client) {
+    if (typeof window !== 'undefined') {
       localStorage.setItem('lastActivity', lastActivityTime.toString())
     }
   }
@@ -47,7 +47,7 @@ export const useAuth = () => {
     if (inactiveMinutes >= AUTO_LOGOUT_ON_INACTIVITY) {
       console.log('Auto-logout due to inactivity')
       logout()
-      if (process.client) {
+      if (typeof window !== 'undefined') {
         alert('Session expired due to inactivity. Please login again.')
         window.location.href = '/login'
       }
@@ -65,7 +65,7 @@ export const useAuth = () => {
       if (isTokenExpired()) {
         console.log('Token expired - logging out')
         logout()
-        if (process.client) {
+        if (typeof window !== 'undefined') {
           alert('Your session has expired. Please login again.')
           window.location.href = '/login'
         }
@@ -116,7 +116,7 @@ export const useAuth = () => {
         updateActivity()
         
         // Store in localStorage with expiry
-        if (process.client) {
+        if (typeof window !== 'undefined') {
           localStorage.setItem('token', response.access_token)
           localStorage.setItem('user', JSON.stringify(response.user))
           localStorage.setItem('tokenExpiry', expiryTime.toString())
@@ -163,7 +163,7 @@ export const useAuth = () => {
       stopExpiryMonitoring()
       
       // Remove activity listeners
-      if (process.client) {
+      if (typeof window !== 'undefined') {
         document.removeEventListener('click', updateActivity)
         document.removeEventListener('keypress', updateActivity)
         document.removeEventListener('scroll', updateActivity)
@@ -175,7 +175,7 @@ export const useAuth = () => {
       tokenExpiry.value = 0
       
       // Clear localStorage
-      if (process.client) {
+      if (typeof window !== 'undefined') {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
         localStorage.removeItem('tokenExpiry')
@@ -185,7 +185,7 @@ export const useAuth = () => {
   }
 
   const checkAuth = () => {
-    if (process.client) {
+    if (typeof window !== 'undefined') {
       const storedToken = localStorage.getItem('token')
       const storedUser = localStorage.getItem('user')
       const storedExpiry = localStorage.getItem('tokenExpiry')

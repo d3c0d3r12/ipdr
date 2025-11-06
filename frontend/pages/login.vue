@@ -172,7 +172,7 @@ const handleLogin = async () => {
       success.value = 'Login successful! Redirecting...'
       
       // Track login activity
-      if (process.client) {
+      if (typeof window !== 'undefined') {
         const { tracking } = useApi()
         tracking.logActivity('login', 'User logged in', '/login')
       }

@@ -7,7 +7,7 @@ export default defineNuxtRouteMiddleware((to, from) => {
   const { isAuthenticated, checkAuth } = useAuth()
   
   // Check if user is authenticated (from localStorage)
-  if (process.client) {
+  if (typeof window !== 'undefined') {
     checkAuth()
   }
   

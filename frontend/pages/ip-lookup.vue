@@ -189,7 +189,7 @@ const fixedFile = ref(null)
 
 // Watch and save state to localStorage when it changes
 watch([selectedRunDir, results, masterFile, fixedFile], () => {
-  if (process.client) {
+  if (typeof window !== 'undefined') {
     if (selectedRunDir.value) localStorage.setItem('current_run_dir', selectedRunDir.value)
     if (results.value) localStorage.setItem('current_results', JSON.stringify(results.value))
     if (masterFile.value) localStorage.setItem('current_master_file', JSON.stringify(masterFile.value))
