@@ -539,13 +539,27 @@ async def fix_to_start(
         # Read Master file
         df = pd.read_csv(master_file, encoding='utf-8')
         
-        # Save without header
+        logger.info(f"📊 Master file loaded: {len(df)} rows")
+        logger.info(f"📋 Columns: {list(df.columns)}")
+        
+        # Remove ALL commas from ALL columns (replace with space)
+        for col in df.columns:
+            if df[col].dtype == 'object':  # Only process string columns
+                df[col] = df[col].astype(str).str.replace(',', ' ', regex=False)
+                logger.info(f"✅ Removed commas from column: {col}")
+        
+        logger.info(f"✅ All commas removed from data")
+        
+        # Save without header and without commas
         fixed_file = run_path / 'fully_fixed.csv'
         df.to_csv(fixed_file, index=False, header=False, encoding='utf-8')
         
+        logger.info(f"✅ Fixed file saved: {fixed_file}")
+        logger.info(f"📊 Total records: {len(df)}")
+        
         return {
             "success": True,
-            "message": "Fixed file created successfully (header removed)",
+            "message": "Fixed file created successfully (header removed, commas removed)",
             "fixed_file": f"/api/files/{run_path.name}/fully_fixed.csv",
             "total_records": len(df),
             "run_dir": run_path.name

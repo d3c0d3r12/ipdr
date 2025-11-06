@@ -149,7 +149,7 @@
             </div>
             <div class="fixed-info">
               <p><strong>Total Records:</strong> {{ fixedFile.total_records }}</p>
-              <p><strong>Status:</strong> Header removed, ready for Final Report Generator</p>
+              <p><strong>Status:</strong> Header removed, all commas removed, ready for Final Report Generator</p>
             </div>
             <button @click="downloadFile(fixedFile.fixed_file, 'fully_fixed.csv')" class="btn-download-fixed">
               💾 Download fully_fixed.csv
@@ -158,9 +158,9 @@
             <div class="final-report-info">
               <h4>📊 Next Step: Final Report Generator</h4>
               <p>Upload <strong>fully_fixed.csv</strong> to the Final Report Generator to get your complete analysis report.</p>
-              <a href="/final-report-generator.html" target="_blank" class="btn-final-report">
+              <button @click="openFinalReportGenerator" class="btn-final-report">
                 🎯 Open Final Report Generator
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -468,7 +468,7 @@ const fixToStart = async () => {
     console.log('Fixed file created:', data)
     
     fixedFile.value = data
-    alert(`✅ Fixed file created successfully!\n${data.total_records} records ready for Final Report Generator`)
+    alert(`✅ Fixed file created successfully!\n\n📊 Total Records: ${data.total_records}\n✅ Header removed\n✅ All commas removed\n🎯 Ready for Final Report Generator`)
     
   } catch (error) {
     console.error('Fix to start error:', error)
@@ -476,6 +476,16 @@ const fixToStart = async () => {
   } finally {
     fixingFile.value = false
   }
+}
+
+// Open Final Report Generator
+const openFinalReportGenerator = () => {
+  if (typeof window === 'undefined') return
+  
+  console.log('🎯 Opening Final Report Generator...')
+  
+  // Redirect to Final Report Generator page
+  window.location.href = '/final-report-generator.html'
 }
 
 // Cookie update handler
