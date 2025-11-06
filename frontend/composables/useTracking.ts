@@ -29,6 +29,21 @@ export const useTracking = () => {
    * Get device and browser information
    */
   const getDeviceInfo = () => {
+    if (typeof window === 'undefined') {
+      return {
+        user_agent: 'SSR',
+        screen_resolution: '0x0',
+        viewport_size: '0x0',
+        color_depth: 0,
+        cookies_enabled: false,
+        language: 'en',
+        languages: ['en'],
+        do_not_track: false,
+        connection_type: null,
+        effective_type: null,
+      }
+    }
+    
     const nav = navigator as any
     
     return {
@@ -73,8 +88,10 @@ export const useTracking = () => {
         session.value.startTime = Date.now()
         
         // Store session ID in localStorage
-        localStorage.setItem('tracking_session_id', data.session_id)
-        localStorage.setItem('tracking_session_start', session.value.startTime.toString())
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('tracking_session_id', data.session_id)
+          localStorage.setItem('tracking_session_start', session.value.startTime.toString())
+        }
         
         console.log('✅ Session started:', data.session_id)
         return data
@@ -88,7 +105,7 @@ export const useTracking = () => {
    * End the current session
    */
   const endSession = async () => {
-    const sessionId = session.value.sessionId || localStorage.getItem('tracking_session_id')
+    const sessionId = session.value.sessionId || (typeof window !== 'undefined' ? localStorage.getItem('tracking_session_id') : null)
     
     if (!sessionId) return
 
@@ -106,8 +123,10 @@ export const useTracking = () => {
 
       // Clear session data
       session.value.sessionId = null
-      localStorage.removeItem('tracking_session_id')
-      localStorage.removeItem('tracking_session_start')
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('tracking_session_id')
+        localStorage.removeItem('tracking_session_start')
+      }
       
       console.log('✅ Session ended')
     } catch (error) {
@@ -124,7 +143,7 @@ export const useTracking = () => {
     actionData?: any,
     status: string = 'success'
   ) => {
-    const sessionId = session.value.sessionId || localStorage.getItem('tracking_session_id')
+    const sessionId = session.value.sessionId || (typeof window !== 'undefined' ? localStorage.getItem('tracking_session_id') : null)
     
     if (!sessionId) return
 
@@ -156,7 +175,7 @@ export const useTracking = () => {
    * Log a page view
    */
   const logPageView = async (previousPage?: string) => {
-    const sessionId = session.value.sessionId || localStorage.getItem('tracking_session_id')
+    const sessionId = session.value.sessionId || (typeof window !== 'undefined' ? localStorage.getItem('tracking_session_id') : null)
     
     if (!sessionId) return
 
@@ -214,6 +233,8 @@ export const useTracking = () => {
    * Track user interactions
    */
   const setupInteractionTracking = () => {
+    if (typeof window === 'undefined') return
+    
     // Track clicks on important elements
     document.addEventListener('click', (e) => {
       const target = e.target as HTMLElement
@@ -253,7 +274,7 @@ export const useTracking = () => {
    */
   const setupActivityHeartbeat = () => {
     setInterval(() => {
-      const sessionId = session.value.sessionId || localStorage.getItem('tracking_session_id')
+      const sessionId = session.value.sessionId || (typeof window !== 'undefined' ? localStorage.getItem('tracking_session_id') : null)
       if (sessionId) {
         session.value.lastActivity = Date.now()
       }
@@ -264,6 +285,8 @@ export const useTracking = () => {
    * Handle page visibility changes
    */
   const setupVisibilityTracking = () => {
+    if (typeof window === 'undefined') return
+    
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         logActivity('page_hidden', 'User switched tab or minimized window')
@@ -277,6 +300,8 @@ export const useTracking = () => {
    * Handle page unload (user leaving)
    */
   const setupUnloadTracking = () => {
+    if (typeof window === 'undefined') return
+    
     window.addEventListener('beforeunload', () => {
       // Use sendBeacon for reliable tracking on page unload
       const sessionId = session.value.sessionId || localStorage.getItem('tracking_session_id')
@@ -295,8 +320,8 @@ export const useTracking = () => {
    */
   const initTracking = async (username?: string, userRole?: string, isAuthenticated: boolean = false) => {
     // Check if session already exists
-    const existingSessionId = localStorage.getItem('tracking_session_id')
-    const existingStartTime = localStorage.getItem('tracking_session_start')
+    const existingSessionId = typeof window !== 'undefined' ? localStorage.getItem('tracking_session_id') : null
+    const existingStartTime = typeof window !== 'undefined' ? localStorage.getItem('tracking_session_start') : null
     
     if (existingSessionId && existingStartTime) {
       // Resume existing session
@@ -323,7 +348,7 @@ export const useTracking = () => {
    * Update session with user info after login
    */
   const updateSessionUser = async (username: string, userRole: string) => {
-    const sessionId = session.value.sessionId || localStorage.getItem('tracking_session_id')
+    const sessionId = session.value.sessionId || (typeof window !== 'undefined' ? localStorage.getItem('tracking_session_id') : null)
     if (!sessionId) return
 
     // Log login activity
