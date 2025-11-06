@@ -446,6 +446,11 @@ async def merge_master_file(
         df_original = pd.read_csv(original_csv)
         df_lookup = pd.read_csv(lookup_csv)
         
+        logger.info(f"📊 Original log: {len(df_original)} rows")
+        logger.info(f"📊 Lookup results: {len(df_lookup)} rows")
+        logger.info(f"📋 Original columns: {list(df_original.columns)}")
+        logger.info(f"📋 Lookup columns: {list(df_lookup.columns)}")
+        
         # Ensure required columns exist
         if 'ip' not in df_original.columns or 'timestamp' not in df_original.columns:
             raise HTTPException(status_code=400, detail="original_log.csv must have 'ip' and 'timestamp' columns")
@@ -453,14 +458,32 @@ async def merge_master_file(
         if 'ip' not in df_lookup.columns:
             raise HTTPException(status_code=400, detail="ip_lookup_results.csv must have 'ip' column")
         
-        # Merge on IP address
-        df_merged = df_original.merge(
-            df_lookup[['ip', 'country', 'city', 'region', 'isp']], 
+        # Keep only timestamp and ip from original (preserve order)
+        df_original_clean = df_original[['timestamp', 'ip']].copy()
+        
+        # Prepare lookup data with only needed columns
+        lookup_columns = ['ip', 'country', 'region', 'city', 'isp']
+        df_lookup_clean = df_lookup[lookup_columns].copy()
+        
+        # Remove duplicates from lookup (keep first occurrence)
+        df_lookup_clean = df_lookup_clean.drop_duplicates(subset=['ip'], keep='first')
+        
+        logger.info(f"📊 Unique IPs in lookup: {len(df_lookup_clean)}")
+        
+        # Merge on IP address - LEFT JOIN preserves ALL original rows in EXACT order
+        df_merged = df_original_clean.merge(
+            df_lookup_clean, 
             on='ip', 
             how='left'
         )
         
-        # Select only required columns
+        logger.info(f"📊 After merge: {len(df_merged)} rows (should match original: {len(df_original)})")
+        
+        # Verify row count matches
+        if len(df_merged) != len(df_original):
+            logger.warning(f"⚠️ Row count mismatch! Original: {len(df_original)}, Merged: {len(df_merged)}")
+        
+        # Select columns in exact order: timestamp, ip, country, city, region, isp
         df_master = df_merged[['timestamp', 'ip', 'country', 'city', 'region', 'isp']]
         
         # Fill missing values with 'Unknown'
@@ -469,6 +492,9 @@ async def merge_master_file(
         # Save to Master file.csv
         master_file = run_path / 'Master file.csv'
         df_master.to_csv(master_file, index=False, encoding='utf-8')
+        
+        logger.info(f"✅ Master file saved: {len(df_master)} rows")
+        logger.info(f"📋 Master file columns: {list(df_master.columns)}")
         
         return {
             "success": True,
