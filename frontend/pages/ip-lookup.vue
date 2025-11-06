@@ -325,41 +325,70 @@ const loadRecentRuns = () => {
 }
 
 const downloadFile = async (filePath, fileName) => {
+  if (typeof window === 'undefined') return
+  
   try {
-    console.log('Downloading file:', filePath)
+    console.log('📥 Downloading file:', filePath)
     
     const config = useRuntimeConfig()
     const apiBase = config.public.apiBase
-    // Build full URL
-    const url = `${apiBase}${filePath}`
-    console.log('Full URL:', url)
     
-    // Fetch the file
-    const response = await fetch(url)
+    // Ensure filePath starts with /
+    const cleanPath = filePath.startsWith('/') ? filePath : `/${filePath}`
+    
+    // Build full URL
+    const url = `${apiBase}${cleanPath}`
+    console.log('🌐 Full URL:', url)
+    
+    // Fetch the file with error handling
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/octet-stream, */*'
+      }
+    })
+    
+    console.log('📡 Response status:', response.status)
+    console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()))
+    
     if (!response.ok) {
-      throw new Error(`Failed to download: ${response.status}`)
+      const errorText = await response.text()
+      console.error('❌ Download failed:', errorText)
+      throw new Error(`Failed to download: ${response.status} - ${errorText}`)
     }
     
     // Get the blob
     const blob = await response.blob()
-    console.log('Blob size:', blob.size)
+    console.log('📦 Blob size:', blob.size, 'bytes')
+    console.log('📦 Blob type:', blob.type)
+    
+    if (blob.size === 0) {
+      throw new Error('Downloaded file is empty')
+    }
     
     // Create download link
     const downloadUrl = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = downloadUrl
     link.download = fileName
+    link.style.display = 'none'
     document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
     
-    // Clean up
-    window.URL.revokeObjectURL(downloadUrl)
+    // Trigger download
+    link.click()
+    
+    // Clean up after a short delay
+    setTimeout(() => {
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(downloadUrl)
+    }, 100)
     
     console.log('✅ Download initiated:', fileName)
+    alert(`✅ Download started: ${fileName}`)
+    
   } catch (error) {
-    console.error('Download error:', error)
-    alert(`Failed to download file: ${error.message}`)
+    console.error('❌ Download error:', error)
+    alert(`Failed to download file: ${error.message}\n\nPlease check:\n1. Backend is running\n2. File exists\n3. Check browser console for details`)
   }
 }
 
