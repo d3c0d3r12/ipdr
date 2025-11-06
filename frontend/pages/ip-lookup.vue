@@ -482,10 +482,10 @@ const fixToStart = async () => {
 const openFinalReportGenerator = () => {
   if (typeof window === 'undefined') return
   
-  console.log('🎯 Opening Final Report Generator...')
+  console.log('🎯 Opening Final Report Generator in new tab...')
   
-  // Redirect to Final Report Generator page
-  window.location.href = '/final-report-generator.html'
+  // Open Final Report Generator in new tab
+  window.open('/final-report-generator.html', '_blank')
 }
 
 // Cookie update handler
