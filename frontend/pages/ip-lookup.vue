@@ -165,6 +165,62 @@
           </div>
         </div>
       </div>
+
+      <!-- Fix Final Report Section -->
+      <div class="fix-final-report-section">
+        <div class="section-card fix-report-card">
+          <div class="card-header">
+            <h3>🔧 Step 6: Fix Final Report Generation</h3>
+            <p>After generating the Final Report CSV, upload it here to apply ISP-specific formatting fixes</p>
+          </div>
+          
+          <div class="fix-report-content">
+            <div class="fixes-info">
+              <h4>✨ What Gets Fixed:</h4>
+              <ul>
+                <li><strong>Date Format:</strong> Airtel → DD-MMM-YYYY (e.g., 14-Nov-2024), Others → DD-MM-YYYY</li>
+                <li><strong>Time Format:</strong> Jio → HHMMSS (compact), Others → HH:MM:SS</li>
+                <li><strong>State/City:</strong> Columns swapped to correct order (State, City)</li>
+                <li><strong>ISP Names:</strong> Kept as is (no changes)</li>
+              </ul>
+            </div>
+
+            <div class="upload-section">
+              <label for="finalReportFile" class="file-label">
+                📄 Upload Final Report CSV
+              </label>
+              <input
+                id="finalReportFile"
+                ref="finalReportFileInput"
+                type="file"
+                accept=".csv"
+                @change="handleFinalReportUpload"
+                class="file-input"
+              />
+              <p v-if="selectedFinalReportFile" class="selected-file">
+                Selected: {{ selectedFinalReportFile.name }}
+              </p>
+            </div>
+
+            <button 
+              @click="fixFinalReport" 
+              :disabled="!selectedFinalReportFile || fixingFinalReport"
+              class="btn-fix-report"
+            >
+              <span v-if="fixingFinalReport">⏳ Fixing Report...</span>
+              <span v-else>🔧 Fix Final Report Generation</span>
+            </button>
+
+            <div v-if="fixedReportSuccess" class="success-message">
+              <h4>✅ Final Report Fixed Successfully!</h4>
+              <p>The corrected file has been downloaded automatically.</p>
+              <p class="info-text">
+                <strong>File name:</strong> Final_Report_CORRECTED.csv
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -186,6 +242,10 @@ const mergingMaster = ref(false)
 const masterFile = ref(null)
 const fixingFile = ref(false)
 const fixedFile = ref(null)
+const selectedFinalReportFile = ref(null)
+const finalReportFileInput = ref(null)
+const fixingFinalReport = ref(false)
+const fixedReportSuccess = ref(false)
 
 // Watch and save state to localStorage when it changes
 watch([selectedRunDir, results, masterFile, fixedFile], () => {
@@ -486,6 +546,93 @@ const openFinalReportGenerator = () => {
   
   // Open Final Report Generator in new tab
   window.open('/final-report-generator.html', '_blank')
+}
+
+// Handle Final Report file selection
+const handleFinalReportUpload = (event) => {
+  const file = event.target.files[0]
+  if (file) {
+    if (!file.name.endsWith('.csv')) {
+      alert('Please select a CSV file')
+      return
+    }
+    selectedFinalReportFile.value = file
+    fixedReportSuccess.value = false
+    console.log('📄 Final Report file selected:', file.name)
+  }
+}
+
+// Fix Final Report with ISP-specific formatting
+const fixFinalReport = async () => {
+  if (!selectedFinalReportFile.value) {
+    alert('Please select a Final Report CSV file first')
+    return
+  }
+
+  fixingFinalReport.value = true
+  fixedReportSuccess.value = false
+
+  try {
+    console.log('🔧 Fixing Final Report...')
+    
+    const config = useRuntimeConfig()
+    const apiBase = config.public.apiBase
+    
+    // Create FormData
+    const formData = new FormData()
+    formData.append('file', selectedFinalReportFile.value)
+    
+    // Get auth token
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+    
+    if (!token) {
+      alert('Please login first')
+      return
+    }
+    
+    // Upload and fix
+    const response = await fetch(`${apiBase}/api/lookup/fix-final-report`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }))
+      throw new Error(errorData.detail || `Server error: ${response.status}`)
+    }
+    
+    // Download the corrected file
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'Final_Report_CORRECTED.csv'
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    
+    console.log('✅ Final Report fixed and downloaded successfully')
+    
+    fixedReportSuccess.value = true
+    
+    // Reset file input
+    selectedFinalReportFile.value = null
+    if (finalReportFileInput.value) {
+      finalReportFileInput.value.value = ''
+    }
+    
+    alert('✅ Final Report fixed successfully!\n\nFile downloaded: Final_Report_CORRECTED.csv\n\nThe file now has:\n- ISP-specific date formats (Airtel: DD-MMM-YYYY, Others: DD-MM-YYYY)\n- ISP-specific time formats (Jio: HHMMSS, Others: HH:MM:SS)\n- Corrected State/City column order\n- Original ISP names preserved')
+    
+  } catch (error) {
+    console.error('❌ Error fixing final report:', error)
+    alert(`Failed to fix final report: ${error.message}`)
+  } finally {
+    fixingFinalReport.value = false
+  }
 }
 
 // Cookie update handler
@@ -1130,5 +1277,170 @@ onMounted(async () => {
   background: #0f0;
   color: #000;
   box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+/* Fix Final Report Section */
+.fix-final-report-section {
+  margin-top: 24px;
+}
+
+.fix-report-card {
+  background: rgba(138, 43, 226, 0.05);
+  border: 2px solid #8a2be2;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.fix-report-card .card-header h3 {
+  color: #8a2be2;
+  font-size: 20px;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.fix-report-card .card-header p {
+  color: #9370db;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.fix-report-content {
+  margin-top: 16px;
+}
+
+.fixes-info {
+  background: rgba(138, 43, 226, 0.1);
+  border: 1px solid #8a2be2;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.fixes-info h4 {
+  color: #ba55d3;
+  font-size: 16px;
+  margin-bottom: 12px;
+  font-weight: bold;
+}
+
+.fixes-info ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.fixes-info li {
+  color: #dda0dd;
+  font-size: 14px;
+  margin-bottom: 8px;
+  padding-left: 20px;
+  position: relative;
+}
+
+.fixes-info li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #0f0;
+  font-weight: bold;
+}
+
+.fixes-info strong {
+  color: #ba55d3;
+}
+
+.upload-section {
+  margin-bottom: 20px;
+}
+
+.file-label {
+  display: block;
+  color: #8a2be2;
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.file-input {
+  width: 100%;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid #8a2be2;
+  border-radius: 6px;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.file-input::-webkit-file-upload-button {
+  background: #8a2be2;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+}
+
+.selected-file {
+  margin-top: 8px;
+  color: #ba55d3;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.btn-fix-report {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #8a2be2 0%, #9370db 100%);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 0 20px rgba(138, 43, 226, 0.3);
+}
+
+.btn-fix-report:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(138, 43, 226, 0.5);
+  background: linear-gradient(135deg, #9370db 0%, #ba55d3 100%);
+}
+
+.btn-fix-report:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fix-report-content .success-message {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(0, 255, 0, 0.05);
+  border: 2px solid #0f0;
+  border-radius: 8px;
+}
+
+.fix-report-content .success-message h4 {
+  color: #0f0;
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.fix-report-content .success-message p {
+  color: #0ff;
+  font-size: 14px;
+  margin: 4px 0;
+}
+
+.fix-report-content .info-text {
+  color: #ba55d3;
+  font-style: italic;
 }
 </style>
