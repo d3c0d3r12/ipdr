@@ -21,11 +21,29 @@ function onChange(e: Event) {
 }
 
 async function uploadFile() {
-  console.log('Upload button clicked')
+  console.log('🚀 Upload button clicked')
+  console.log('📊 Current state:', {
+    hasFile: !!file.value,
+    fileName: file.value?.name,
+    firNo: firNo.value,
+    preserveDuplicates: preserveDuplicates.value,
+    bypassCloudflare: bypassCloudflare.value
+  })
   
-  if (!file.value || !firNo.value) {
-    message.value = 'FIR number and file are required'
-    alert('Please enter FIR number and select a file')
+  // Validation
+  if (!file.value) {
+    const msg = 'Please select a file first'
+    console.error('❌ Validation failed:', msg)
+    message.value = msg
+    alert(msg)
+    return
+  }
+  
+  if (!firNo.value || firNo.value.trim() === '') {
+    const msg = 'Please enter FIR number'
+    console.error('❌ Validation failed:', msg)
+    message.value = msg
+    alert(msg)
     return
   }
   
@@ -37,6 +55,7 @@ async function uploadFile() {
   
   uploading.value = true
   message.value = 'Uploading...'
+  console.log('⏳ Upload started...')
   
   const formData = new FormData()
   formData.append('file', file.value)
@@ -44,22 +63,30 @@ async function uploadFile() {
   formData.append('preserve_duplicates', preserveDuplicates.value.toString())
   formData.append('bypass_cloudflare', bypassCloudflare.value.toString())
   
-  console.log('Uploading to:', `${apiBase}/api/upload/`)
-  console.log('FIR:', firNo.value)
-  console.log('File:', file.value.name)
-  console.log('Bypass Cloudflare:', bypassCloudflare.value)
+  console.log('📤 Uploading to:', `${apiBase}/api/upload/`)
+  console.log('📋 Form data:', {
+    file: file.value.name,
+    fir: firNo.value,
+    preserve_duplicates: preserveDuplicates.value,
+    bypass_cloudflare: bypassCloudflare.value
+  })
   
   try {
+    console.log('🌐 Sending fetch request...')
     const response = await fetch(`${apiBase}/api/upload/`, {
       method: 'POST',
       body: formData
     })
     
-    console.log('Response status:', response.status)
+    console.log('📨 Response received:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    })
     
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Upload failed:', errorText)
+      console.error('❌ Upload failed:', errorText)
       throw new Error(`Upload failed: ${response.status} ${errorText}`)
     }
     
@@ -99,11 +126,17 @@ async function uploadFile() {
       alert('Upload succeeded but cannot redirect. Please click "Start Unlimited IP Lookup" button.')
     }
   } catch (error: any) {
-    console.error('Upload error:', error)
+    console.error('❌ Upload error:', error)
+    console.error('Error details:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name
+    })
     message.value = error?.message || 'Upload failed'
     alert(`Upload error: ${error?.message || 'Upload failed'}`)
   } finally {
     uploading.value = false
+    console.log('🏁 Upload process finished')
   }
 }
 
