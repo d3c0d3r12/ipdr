@@ -1,7 +1,7 @@
 <template>
   <NuxtLink to="/" class="dp-logo">
     <div class="dp-logo-icon">
-      <span class="dp-logo-badge">🛡️</span>
+      <img src="/Delhi_Police_Logo-1.png" alt="Delhi Police" class="dp-logo-image" />
     </div>
     <div class="dp-logo-text">
       <div class="dp-logo-title">DELHI POLICE</div>
@@ -32,16 +32,17 @@
 }
 
 .dp-logo-icon {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-  border-radius: 0.75rem;
+  width: 56px;
+  height: 56px;
+  background: white;
+  border-radius: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 20px rgba(30, 58, 138, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 20px rgba(30, 58, 138, 0.3);
   position: relative;
   overflow: hidden;
+  padding: 0.25rem;
 }
 
 .dp-logo-icon::before {
@@ -51,8 +52,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+  background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%);
   animation: shimmer 3s infinite;
+  z-index: 1;
 }
 
 @keyframes shimmer {
@@ -60,9 +62,13 @@
   100% { transform: translateX(100%); }
 }
 
-.dp-logo-badge {
-  font-size: 1.5rem;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+.dp-logo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  position: relative;
+  z-index: 0;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
 .dp-logo-text {
