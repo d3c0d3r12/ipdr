@@ -1,0 +1,68 @@
+Type,Search Value,From Date,From Time,To Date,To Time,Original Date & Time(UTC),Country,State,City,ISP
+IPV6,2401:4900:170a:8799:5211:8ff:5f78:f889,14.11.2024,10:05:14,14.11.2024,10:15:14,2024-11-14 04:40:14 Z,India (IN),Mumbai,Maharashtra,Bharti Airtel Ltd. AS for GPRS Service
+IPV6,2401:4900:1708:b927:6afc:6dcb:9cc7:396d,12.11.2024,09:25:23,12.11.2024,09:35:23,2024-11-12 04:00:23 Z,India (IN),Mumbai,Maharashtra,Bharti Airtel Ltd. AS for GPRS Service
+IPV6,2409:40d4:400c:a215:34a5:4fff:fe80:6baf,20241107,185032,20241107,190032,2024-11-07 13:25:32 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4045:ca88:e0bf:2ff:fe67:d81f,20241105,183927,20241105,184927,2024-11-05 13:14:27 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4051:2458:9c46:f8ff:fe3a:2d61,20241103,182258,20241103,183258,2024-11-03 12:57:58 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4050:e110:d8e7:9ff:fe1e:225b,20241101,181359,20241101,182359,2024-11-01 12:48:59 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4000:360d:d81d:10ff:feb4:63d,20241030,180446,20241030,181446,2024-10-30 12:39:46 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:401c:f47c:d00a:dcff:fe82:c8e1,20241030,001723,20241030,002723,2024-10-29 18:52:23 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4055:ae7d:c478:baff:fe46:94a3,20241028,174837,20241028,175837,2024-10-28 12:23:37 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4057:7515:1ced:50ff:fe43:608e,20241026,173621,20241026,174621,2024-10-26 12:11:21 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:16d:f51d:28e2:38ff:fe1d:aae3,20241024,170233,20241024,171233,2024-10-24 11:37:33 Z,India (IN),Jaipur,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:16d:f51d:28e2:38ff:fe1d:aae3,20241024,160353,20241024,161353,2024-10-24 10:38:53 Z,India (IN),Jaipur,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:16d:f51d:28e2:38ff:fe1d:aae3,20241024,160352,20241024,161352,2024-10-24 10:38:52 Z,India (IN),Jaipur,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:401b:d8bf:f856:f8ff:fe5b:70f5,20241022,165146,20241022,170146,2024-10-22 11:26:46 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d2:12ac:7801:1c17:ebff:fe66:1c8f,20241020,164852,20241020,165852,2024-10-20 11:23:52 Z,India (IN),Meerut,Uttar Pradesh,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4004:60a7:583f:f3ff:fe80:a98a,20241018,164153,20241018,165153,2024-10-18 11:16:53 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:404b:c26a:89f:3ff:feea:1eec,20241016,162326,20241016,163326,2024-10-16 10:58:26 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4011:b36b:1452:22ff:fe5f:6fa7,20241014,160849,20241014,161849,2024-10-14 10:43:49 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:64:be1a:d43b:85ff:fe36:7f3a,20241012,160510,20241012,161510,2024-10-12 10:40:10 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1050:6b56:a073:abff:fe16:1327,20241010,154506,20241010,155506,2024-10-10 10:20:06 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4006:7a79:a09d:a0ff:fe2a:ac8e,20241008,145132,20241008,150132,2024-10-08 09:26:32 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4054:9f4e:94df:20ff:fe75:6cee,20241006,144432,20241006,145432,2024-10-06 09:19:32 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4018:930c:1c95:d4ff:fecd:6e7d,20241004,140239,20241004,141239,2024-10-04 08:37:39 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:404c:32d6:505a:cfff:fe64:2161,20241002,134430,20241002,135430,2024-10-02 08:19:30 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4057:77da:48af:62ff:fe73:2506,20240930,130332,20240930,131332,2024-09-30 07:38:32 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:400d:23ed:60ce:60ff:feaa:5422,20240929,190335,20240929,191335,2024-09-29 13:38:35 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:fe:c7a8:a805:f8ff:fef4:2d38,20240928,124843,20240928,125843,2024-09-28 07:23:43 Z,India (IN),Jaipur,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:101e:d5a7:cfb:a9ff:fe79:dca2,20240928,072247,20240928,073247,2024-09-28 01:57:47 Z,India (IN),Udaipur,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d0:1001:136f:7824:94ff:fe99:5547,20240927,113454,20240927,114454,2024-09-27 06:09:54 Z,India (IN),New Delhi,National Capital Territory of Delhi,Reliance Jio Infocomm Limited
+IPV6,2409:40d0:1021:e3b3:d47c:acff:feeb:c5e9,20240926,123232,20240926,124232,2024-09-26 07:07:32 Z,India (IN),New Delhi,National Capital Territory of Delhi,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:129:1ef1:9452:b1ff:fe24:85e0,20240926,102030,20240926,103030,2024-09-26 04:55:30 Z,India (IN),Jaipur,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:15:8a4f:54ec:4aff:fe93:74f3,20240925,234957,20240925,235957,2024-09-25 18:24:57 Z,India (IN),Jaipur,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:404d:6c7a:b823:7bff:fec5:7081,20240925,204845,20240925,205845,2024-09-25 15:23:45 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4009:2843:38a8:31ff:fe62:fac3,20240925,121916,20240925,122916,2024-09-25 06:54:16 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4003:8d54:38b8:3cff:fe5f:8ee7,20240924,115721,20240924,120721,2024-09-24 06:32:21 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:405d:6d2a:6c2e:85ff:fe7d:ded8,20240923,115309,20240923,120309,2024-09-23 06:28:09 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:404c:a50b:c447:d2ff:fe88:e61f,20240922,115025,20240922,120025,2024-09-22 06:25:25 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4048:7b9b:c0ee:c6ff:fe88:1ad0,20240921,110308,20240921,111308,2024-09-21 05:38:08 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4049:a369:54cc:62ff:fe7a:4c35,20240920,104121,20240920,105121,2024-09-20 05:16:21 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:401a:66c6:5c1d:5cff:fe2c:b799,20240919,101830,20240919,102830,2024-09-19 04:53:30 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4041:3ba5:e0ea:34ff:fe9d:a333,20240918,100344,20240918,101344,2024-09-18 04:38:44 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:405d:7cec:a4b1:13ff:feec:f9a2,20240917,094649,20240917,095649,2024-09-17 04:21:49 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40d4:4049:4db3:dcfc:76ff:fe55:1830,20240916,091631,20240916,092631,2024-09-16 03:51:31 Z,India (IN),Kota,Rajasthan,Reliance Jio Infocomm Limited
+IPV6,2409:40c4:1003:a14d:44bc:71ff:fe76:ee46,20240915,081254,20240915,082254,2024-09-15 02:47:54 Z,India (IN),Indore,Madhya Pradesh,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1053:16cc:68cb:e7ff:fecd:3a64,20240914,072948,20240914,073948,2024-09-14 02:04:48 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1049:8b47:546b:b2ff:fe94:9ed0,20240913,071508,20240913,072508,2024-09-13 01:50:08 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40d0:1015:4097:c497:67ff:fe19:37cd,20240912,001352,20240912,002352,2024-09-11 18:48:52 Z,India (IN),New Delhi,National Capital Territory of Delhi,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:5a:5e4:b856:54ff:feb3:b4b8,20240910,235005,20240911,000005,2024-09-10 18:25:05 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:3b:a114:5071:d3ff:feb5:10bd,20240909,233408,20240909,234408,2024-09-09 18:09:08 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:4a:27a4:7cf2:3fff:fefc:c0e,20240908,230418,20240908,231418,2024-09-08 17:39:18 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:6e:8aed:2037:6fff:fe51:17e4,20240907,220650,20240907,221650,2024-09-07 16:41:50 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:76:75e9:b886:a5ff:fe98:b07,20240906,221834,20240906,222834,2024-09-06 16:53:34 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1038:bbc8:a84a:6fff:fe5f:ed3,20240905,214408,20240905,215408,2024-09-05 16:19:08 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1e:b711:b07f:52ff:fe60:6482,20240904,214124,20240904,215124,2024-09-04 16:16:24 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:38:8a3c:1c07:d3ff:fe5a:9f07,20240903,212626,20240903,213626,2024-09-03 16:01:26 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:73:953:34d3:61ff:fea9:d7a1,20240902,205847,20240902,210847,2024-09-02 15:33:47 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1060:2ae1:2822:1eff:fef2:3294,20240901,204628,20240901,205628,2024-09-01 15:21:28 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1060:2ae1:2822:1eff:fef2:3294,20240901,022628,20240901,023628,2024-08-31 21:01:28 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1060:2ae1:2822:1eff:fef2:3294,20240831,203403,20240831,204403,2024-08-31 15:09:03 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1060:2ae1:b8d6:41ff:fea4:e6a9,20240830,203134,20240830,204134,2024-08-30 15:06:34 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1060:2ae1:b8d6:41ff:fea4:e6a9,20240830,202535,20240830,203535,2024-08-30 15:00:35 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1060:2ae1:b8d6:41ff:fea4:e6a9,20240830,202517,20240830,203517,2024-08-30 15:00:17 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1060:2ae1:b8d6:41ff:fea4:e6a9,20240830,202225,20240830,203225,2024-08-30 14:57:25 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1060:2ae1:b8d6:41ff:fea4:e6a9,20240830,201850,20240830,202850,2024-08-30 14:53:50 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1060:2ae1:b8d6:41ff:fea4:e6a9,20240830,201729,20240830,202729,2024-08-30 14:52:29 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1060:2ae1:3c0a:d6ff:fe7c:3b8,20240830,193931,20240830,194931,2024-08-30 14:14:31 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
+IPV6,2409:40c0:1060:2ae1:3c0a:d6ff:fe7c:3b8,20240830,193927,20240830,194927,2024-08-30 14:14:27 Z,India (IN),Mumbai,Maharashtra,Reliance Jio Infocomm Limited
