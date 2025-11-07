@@ -571,9 +571,7 @@ async def fix_to_start(
 
 @router.post("/fix-final-report")
 async def fix_final_report(
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    file: UploadFile = File(...)
 ):
     """
     Fix Final Report CSV with ISP-specific formatting rules

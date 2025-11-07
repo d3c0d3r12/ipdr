@@ -582,62 +582,11 @@ const fixFinalReport = async () => {
     const formData = new FormData()
     formData.append('file', selectedFinalReportFile.value)
     
-    // Get auth token
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
-    
-    if (!token) {
-      console.log('❌ No auth token - redirecting to login')
-      
-      // Save current state before redirect
-      if (typeof window !== 'undefined') {
-        const state = {
-          runDir: selectedRunDir.value,
-          results: results.value,
-          masterFile: masterFile.value,
-          fixedFile: fixedFile.value,
-          selectedFile: selectedFinalReportFile.value?.name
-        }
-        localStorage.setItem('preserved_state', JSON.stringify(state))
-        localStorage.setItem('redirect_after_login', '/ip-lookup')
-        console.log('💾 State preserved, redirecting to login...')
-      }
-      
-      // Redirect to login
-      await navigateTo('/login')
-      return
-    }
-    
-    // Upload and fix
+    // Upload and fix (no authentication required)
     const response = await fetch(`${apiBase}/api/lookup/fix-final-report`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
       body: formData
     })
-    
-    // Handle 401/403 - redirect to login
-    if (response.status === 401 || response.status === 403) {
-      console.log('❌ 401/403 Unauthorized - redirecting to login')
-      
-      // Save current state before redirect
-      if (typeof window !== 'undefined') {
-        const state = {
-          runDir: selectedRunDir.value,
-          results: results.value,
-          masterFile: masterFile.value,
-          fixedFile: fixedFile.value,
-          selectedFile: selectedFinalReportFile.value?.name
-        }
-        localStorage.setItem('preserved_state', JSON.stringify(state))
-        localStorage.setItem('redirect_after_login', '/ip-lookup')
-        console.log('💾 State preserved, redirecting to login...')
-      }
-      
-      // Redirect to login
-      await navigateTo('/login')
-      return
-    }
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }))
