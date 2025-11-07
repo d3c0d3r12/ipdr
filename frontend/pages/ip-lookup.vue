@@ -166,8 +166,8 @@
         </div>
       </div>
 
-      <!-- Fix Final Report Section -->
-      <div class="fix-final-report-section">
+      <!-- Fix Final Report Section - Only show after Step 5 (Fix to Start) is complete -->
+      <div v-if="fixedFile" class="fix-final-report-section">
         <div class="section-card fix-report-card">
           <div class="card-header">
             <h3>🔧 Step 6: Fix Final Report Generation</h3>
@@ -586,7 +586,24 @@ const fixFinalReport = async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
     
     if (!token) {
-      alert('Please login first')
+      console.log('❌ No auth token - redirecting to login')
+      
+      // Save current state before redirect
+      if (typeof window !== 'undefined') {
+        const state = {
+          runDir: selectedRunDir.value,
+          results: results.value,
+          masterFile: masterFile.value,
+          fixedFile: fixedFile.value,
+          selectedFile: selectedFinalReportFile.value?.name
+        }
+        localStorage.setItem('preserved_state', JSON.stringify(state))
+        localStorage.setItem('redirect_after_login', '/ip-lookup')
+        console.log('💾 State preserved, redirecting to login...')
+      }
+      
+      // Redirect to login
+      await navigateTo('/login')
       return
     }
     
@@ -598,6 +615,29 @@ const fixFinalReport = async () => {
       },
       body: formData
     })
+    
+    // Handle 401/403 - redirect to login
+    if (response.status === 401 || response.status === 403) {
+      console.log('❌ 401/403 Unauthorized - redirecting to login')
+      
+      // Save current state before redirect
+      if (typeof window !== 'undefined') {
+        const state = {
+          runDir: selectedRunDir.value,
+          results: results.value,
+          masterFile: masterFile.value,
+          fixedFile: fixedFile.value,
+          selectedFile: selectedFinalReportFile.value?.name
+        }
+        localStorage.setItem('preserved_state', JSON.stringify(state))
+        localStorage.setItem('redirect_after_login', '/ip-lookup')
+        console.log('💾 State preserved, redirecting to login...')
+      }
+      
+      // Redirect to login
+      await navigateTo('/login')
+      return
+    }
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }))
