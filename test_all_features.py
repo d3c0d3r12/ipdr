@@ -11,7 +11,7 @@ from pathlib import Path
 # Configuration
 API_BASE = "http://localhost:8000"
 USERNAME = "admin"
-PASSWORD = "admin123"
+PASSWORD = "Admin@123456"  # Default admin password from init_database.py
 
 # Colors for output
 class Colors:
@@ -62,14 +62,21 @@ def test_1_login():
     print_test("Login & Authentication")
     
     try:
+        # Send JSON data (auth_secure expects JSON, not form data)
         response = requests.post(
             f"{API_BASE}/api/auth/login",
-            data={"username": USERNAME, "password": PASSWORD}
+            json={"username": USERNAME, "password": PASSWORD},
+            headers={"Content-Type": "application/json"}
         )
+        
+        print_info(f"Response status: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
-            auth_token = data.get("access_token")
+            print_info(f"Response data: {json.dumps(data, indent=2)}")
+            
+            # auth_secure returns access_token, auth returns token
+            auth_token = data.get("access_token") or data.get("token")
             
             if auth_token:
                 print_info(f"Token: {auth_token[:20]}...")
@@ -79,7 +86,9 @@ def test_1_login():
                 record_result("Login failed", False, "No token in response")
                 return False
         else:
-            record_result("Login failed", False, f"Status {response.status_code}")
+            error_detail = response.text
+            print_info(f"Error response: {error_detail}")
+            record_result("Login failed", False, f"Status {response.status_code}: {error_detail}")
             return False
             
     except Exception as e:
@@ -200,8 +209,8 @@ def test_5_cors():
         return False
 
 def test_6_unauthorized_access():
-    """Test 6: Unauthorized Access (401)"""
-    print_test("Unauthorized Access (401)")
+    """Test 6: Unauthorized Access (401/403)"""
+    print_test("Unauthorized Access (401/403)")
     
     try:
         # Try to access protected endpoint without token
@@ -210,16 +219,18 @@ def test_6_unauthorized_access():
             data={"run_dir": "test"}
         )
         
-        if response.status_code == 401:
-            print_info("Correctly returned 401 for unauthorized access")
-            record_result("401 handling correct", True)
+        # FastAPI returns 403 when no Authorization header is provided
+        # Returns 401 when invalid/expired token is provided
+        if response.status_code in [401, 403]:
+            print_info(f"Correctly returned {response.status_code} for unauthorized access")
+            record_result("Unauthorized access blocked", True)
             return True
         else:
-            record_result("401 handling incorrect", False, f"Expected 401, got {response.status_code}")
+            record_result("Unauthorized access not blocked", False, f"Expected 401/403, got {response.status_code}")
             return False
             
     except Exception as e:
-        record_result("401 test failed", False, str(e))
+        record_result("Unauthorized test failed", False, str(e))
         return False
 
 def print_summary():
