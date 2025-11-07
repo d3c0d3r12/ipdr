@@ -1,6 +1,7 @@
 <template>
   <div class="dp-app">
-    <DelhiPoliceNav />
+    <!-- Only show navigation on authenticated pages (not login/signup) -->
+    <DelhiPoliceNav v-if="showNav" />
     <NuxtPage />
   </div>
 </template>
@@ -9,8 +10,14 @@
 // Import theme CSS
 import '~/assets/css/theme.css'
 
-// Check authentication on app mount
+const route = useRoute()
 const { checkAuth } = useAuth()
+
+// Hide navigation on login and signup pages
+const showNav = computed(() => {
+  const publicPages = ['/login', '/signup']
+  return !publicPages.includes(route.path)
+})
 
 onMounted(() => {
   checkAuth()

@@ -1,5 +1,10 @@
 <template>
   <div class="cyber-login-container">
+    <!-- Delhi Police Logo - Top Right -->
+    <div class="login-logo-corner">
+      <DelhiPoliceLogo />
+    </div>
+
     <!-- Animated Background -->
     <div class="cyber-bg">
       <div class="grid-lines"></div>
@@ -202,6 +207,20 @@ const handleLogin = async () => {
   padding: 2rem;
   position: relative;
   overflow: hidden;
+}
+
+/* Delhi Police Logo - Top Right Corner */
+.login-logo-corner {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  z-index: 100;
+  opacity: 0.9;
+  transition: opacity 0.3s ease;
+}
+
+.login-logo-corner:hover {
+  opacity: 1;
 }
 
 /* Animated Background */
@@ -578,6 +597,11 @@ const handleLogin = async () => {
     bottom: 1rem;
     right: 1rem;
     font-size: 0.65rem;
+  }
+
+  .login-logo-corner {
+    top: 1rem;
+    right: 1rem;
   }
 }
 </style>
