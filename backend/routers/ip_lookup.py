@@ -3,7 +3,7 @@ Unlimited IP Lookup Router - InfoByIP Integration
 Handles unlimited IP lookups with Cloudflare bypass and real-time progress streaming
 """
 
-from fastapi import APIRouter, HTTPException, Query, Form, Depends
+from fastapi import APIRouter, HTTPException, Query, Form, Depends, File, UploadFile
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
 from core.db import get_db
