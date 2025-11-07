@@ -569,6 +569,193 @@ async def fix_to_start(
         raise HTTPException(status_code=500, detail=f"Error creating fixed file: {str(e)}")
 
 
+@router.post("/fix-final-report")
+async def fix_final_report(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Fix Final Report CSV with ISP-specific formatting rules
+    
+    Fixes:
+    1. Date Format:
+       - Airtel: DD-MMM-YYYY (e.g., 14-Nov-2024)
+       - Jio & Others: DD-MM-YYYY (e.g., 07-11-2024)
+    
+    2. Time Format:
+       - Jio: HHMMSS (compact, e.g., 185032)
+       - Others: HH:MM:SS (with colons, e.g., 18:50:32)
+    
+    3. State/City: Swap columns (State first, City second)
+    
+    4. ISP Names: Keep as is (no changes)
+    """
+    import pandas as pd
+    from datetime import datetime
+    import re
+    
+    try:
+        # Read uploaded CSV file
+        contents = await file.read()
+        
+        # Save temporarily
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.csv') as tmp:
+            tmp.write(contents)
+            tmp_path = tmp.name
+        
+        # Read CSV
+        df = pd.read_csv(tmp_path, encoding='utf-8')
+        
+        logger.info(f"📊 Final Report loaded: {len(df)} rows")
+        logger.info(f"📋 Columns: {list(df.columns)}")
+        
+        # Month conversion for Airtel
+        month_map = {
+            '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr',
+            '05': 'May', '06': 'Jun', '07': 'Jul', '08': 'Aug',
+            '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec'
+        }
+        
+        def convert_date_format(date_str, isp):
+            """Convert date based on ISP"""
+            if pd.isna(date_str) or date_str == '':
+                return date_str
+            
+            date_str = str(date_str).strip()
+            
+            # Check if Airtel
+            is_airtel = 'Airtel' in str(isp) or 'airtel' in str(isp).lower()
+            
+            # Parse different date formats
+            # Format 1: YYYYMMDD (e.g., 20241107)
+            if re.match(r'^\d{8}$', date_str):
+                year = date_str[0:4]
+                month = date_str[4:6]
+                day = date_str[6:8]
+                
+                if is_airtel:
+                    # Airtel: DD-MMM-YYYY
+                    month_name = month_map.get(month, month)
+                    return f"{day}-{month_name}-{year}"
+                else:
+                    # Jio & Others: DD-MM-YYYY
+                    return f"{day}-{month}-{year}"
+            
+            # Format 2: DD.MM.YYYY (e.g., 14.11.2024)
+            elif '.' in date_str:
+                parts = date_str.split('.')
+                if len(parts) == 3:
+                    day, month, year = parts
+                    
+                    if is_airtel:
+                        # Airtel: DD-MMM-YYYY
+                        month_name = month_map.get(month, month)
+                        return f"{day}-{month_name}-{year}"
+                    else:
+                        # Jio & Others: DD-MM-YYYY
+                        return f"{day}-{month}-{year}"
+            
+            # Format 3: DD-MM-YYYY (already correct for Jio/Others)
+            elif '-' in date_str and not any(m in date_str for m in month_map.values()):
+                parts = date_str.split('-')
+                if len(parts) == 3:
+                    day, month, year = parts
+                    
+                    if is_airtel:
+                        # Convert to Airtel format: DD-MMM-YYYY
+                        month_name = month_map.get(month, month)
+                        return f"{day}-{month_name}-{year}"
+                    else:
+                        # Already correct for Jio/Others
+                        return date_str
+            
+            # Already in correct format or unknown format
+            return date_str
+        
+        def convert_time_format(time_str, isp):
+            """Convert time based on ISP"""
+            if pd.isna(time_str) or time_str == '':
+                return time_str
+            
+            time_str = str(time_str).strip()
+            
+            # Check if Jio
+            is_jio = 'Jio' in str(isp) or 'jio' in str(isp).lower()
+            
+            if is_jio:
+                # Jio: Keep compact format HHMMSS
+                # If already in HH:MM:SS, convert to HHMMSS
+                if ':' in time_str:
+                    time_str = time_str.replace(':', '')
+                return time_str
+            else:
+                # Others (Airtel, VI, etc.): Convert to HH:MM:SS
+                # If in compact format HHMMSS, add colons
+                if ':' not in time_str and len(time_str) == 6:
+                    return f"{time_str[0:2]}:{time_str[2:4]}:{time_str[4:6]}"
+                return time_str
+        
+        # Process each row
+        for idx, row in df.iterrows():
+            isp = row.get('ISP', '')
+            
+            # Fix dates (From Date and To Date)
+            if 'From Date' in df.columns:
+                df.at[idx, 'From Date'] = convert_date_format(row['From Date'], isp)
+            if 'To Date' in df.columns:
+                df.at[idx, 'To Date'] = convert_date_format(row['To Date'], isp)
+            
+            # Fix times (From Time and To Time)
+            if 'From Time' in df.columns:
+                df.at[idx, 'From Time'] = convert_time_format(row['From Time'], isp)
+            if 'To Time' in df.columns:
+                df.at[idx, 'To Time'] = convert_time_format(row['To Time'], isp)
+            
+            # Swap State and City columns
+            if 'State' in df.columns and 'City' in df.columns:
+                state_val = row['State']
+                city_val = row['City']
+                df.at[idx, 'State'] = city_val  # State column gets City value
+                df.at[idx, 'City'] = state_val  # City column gets State value
+        
+        logger.info(f"✅ All formatting fixes applied")
+        logger.info(f"   - Date formats: ISP-specific (Airtel: DD-MMM-YYYY, Others: DD-MM-YYYY)")
+        logger.info(f"   - Time formats: ISP-specific (Jio: HHMMSS, Others: HH:MM:SS)")
+        logger.info(f"   - State/City: Swapped")
+        logger.info(f"   - ISP names: Kept as is")
+        
+        # Save corrected file
+        output_path = Path(tmp_path).parent / 'Final_Report_CORRECTED.csv'
+        df.to_csv(output_path, index=False, encoding='utf-8')
+        
+        logger.info(f"✅ Corrected file saved: {output_path}")
+        
+        # Read file for download
+        with open(output_path, 'rb') as f:
+            corrected_content = f.read()
+        
+        # Cleanup temp files
+        import os
+        os.unlink(tmp_path)
+        os.unlink(output_path)
+        
+        # Return file as download
+        from fastapi.responses import Response
+        return Response(
+            content=corrected_content,
+            media_type='text/csv',
+            headers={
+                'Content-Disposition': 'attachment; filename="Final_Report_CORRECTED.csv"'
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Error fixing final report: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fixing final report: {str(e)}")
+
+
 @router.get("/files/{run_dir}/{filename}")
 async def download_file(run_dir: str, filename: str):
     """
