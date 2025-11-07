@@ -27,13 +27,13 @@ def print_test(name):
     print(f"{Colors.BLUE}{'='*60}{Colors.END}")
 
 def print_pass(message):
-    print(f"{Colors.GREEN}✅ PASS: {message}{Colors.END}")
+    print(f"{Colors.GREEN}[PASS] {message}{Colors.END}")
 
 def print_fail(message):
-    print(f"{Colors.RED}❌ FAIL: {message}{Colors.END}")
+    print(f"{Colors.RED}[FAIL] {message}{Colors.END}")
 
 def print_info(message):
-    print(f"{Colors.YELLOW}ℹ️  INFO: {message}{Colors.END}")
+    print(f"{Colors.YELLOW}[INFO] {message}{Colors.END}")
 
 # Test Results
 test_results = {
@@ -96,19 +96,28 @@ def test_1_login():
         return False
 
 def test_2_upload_file():
-    """Test 2: Upload CSV File"""
-    print_test("Upload CSV File")
+    """Test 2: Upload HTML File"""
+    print_test("Upload HTML File")
     
     if not auth_token:
         record_result("Upload skipped", False, "No auth token")
         return None
     
     try:
-        # Create a sample CSV file
-        sample_csv = "timestamp,ip\n2024-11-14 04:40:14 Z,2401:4900:170a:8799:5211:8ff:5f78:f889\n"
+        # Create a sample HTML file with IP activity data
+        sample_html = """
+        <html>
+        <body>
+        <table>
+        <tr><td>2024-11-14 04:40:14 Z</td><td>2401:4900:170a:8799:5211:8ff:5f78:f889</td><td>Login</td></tr>
+        <tr><td>2024-11-14 04:45:20 Z</td><td>2401:4900:1708:b927:6afc:6dcb:9cc7:396d</td><td>View</td></tr>
+        </table>
+        </body>
+        </html>
+        """
         
-        files = {"file": ("test.csv", sample_csv, "text/csv")}
-        data = {"fir_number": "TEST-001"}
+        files = {"file": ("test.html", sample_html, "text/html")}
+        data = {"fir": "TEST-001"}
         headers = {"Authorization": f"Bearer {auth_token}"}
         
         response = requests.post(
@@ -118,14 +127,19 @@ def test_2_upload_file():
             headers=headers
         )
         
+        print_info(f"Response status: {response.status_code}")
+        
         if response.status_code == 200:
             data = response.json()
+            print_info(f"Response: {json.dumps(data, indent=2)}")
             run_dir = data.get("run_dir")
             print_info(f"Run directory: {run_dir}")
             record_result("File upload successful", True)
             return run_dir
         else:
-            record_result("File upload failed", False, f"Status {response.status_code}")
+            error_detail = response.text
+            print_info(f"Error response: {error_detail}")
+            record_result("File upload failed", False, f"Status {response.status_code}: {error_detail}")
             return None
             
     except Exception as e:
@@ -255,9 +269,9 @@ def print_summary():
     print(f"\n{Colors.BLUE}{'='*60}{Colors.END}")
     
     if test_results['failed'] == 0:
-        print(f"{Colors.GREEN}🎉 ALL TESTS PASSED! SYSTEM IS READY! 🎉{Colors.END}")
+        print(f"{Colors.GREEN}*** ALL TESTS PASSED! SYSTEM IS READY! ***{Colors.END}")
     else:
-        print(f"{Colors.RED}❌ SOME TESTS FAILED. PLEASE FIX ISSUES. ❌{Colors.END}")
+        print(f"{Colors.RED}*** SOME TESTS FAILED. PLEASE FIX ISSUES. ***{Colors.END}")
     
     print(f"{Colors.BLUE}{'='*60}{Colors.END}\n")
 
