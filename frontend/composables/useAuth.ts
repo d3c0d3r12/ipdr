@@ -12,11 +12,14 @@ export const useAuth = () => {
   let expiryCheckInterval: any = null
 
   // Token expiration settings
-  const TOKEN_LIFETIME = 24 * 60 // 24 hours (1 day)
+  const TOKEN_LIFETIME = 24 * 60 // 24 hours (1 day) - but session ends on browser close
   const WARNING_BEFORE_EXPIRY = 30 // Warn 30 minutes before expiry
-  const AUTO_LOGOUT_ON_INACTIVITY = 60 // Auto logout after 60 minutes of inactivity
+  const AUTO_LOGOUT_ON_INACTIVITY = 120 // Auto logout after 120 minutes (2 hours) of inactivity
 
   let lastActivityTime = Date.now()
+  
+  // Use sessionStorage instead of localStorage for session-based auth
+  const storage = typeof window !== 'undefined' ? window.sessionStorage : null
 
   // Check if token is expired
   const isTokenExpired = () => {
@@ -34,8 +37,8 @@ export const useAuth = () => {
   // Update last activity time
   const updateActivity = () => {
     lastActivityTime = Date.now()
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('lastActivity', lastActivityTime.toString())
+    if (storage) {
+      storage.setItem('lastActivity', lastActivityTime.toString())
     }
   }
 
@@ -115,12 +118,12 @@ export const useAuth = () => {
         // Update activity
         updateActivity()
         
-        // Store in localStorage with expiry
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('token', response.access_token)
-          localStorage.setItem('user', JSON.stringify(response.user))
-          localStorage.setItem('tokenExpiry', expiryTime.toString())
-          localStorage.setItem('lastActivity', Date.now().toString())
+        // Store in sessionStorage (clears on browser close)
+        if (storage) {
+          storage.setItem('auth_token', response.access_token)
+          storage.setItem('user', JSON.stringify(response.user))
+          storage.setItem('tokenExpiry', expiryTime.toString())
+          storage.setItem('lastActivity', Date.now().toString())
           
           // Start monitoring
           startExpiryMonitoring()
@@ -174,22 +177,22 @@ export const useAuth = () => {
       user.value = null
       tokenExpiry.value = 0
       
-      // Clear localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        localStorage.removeItem('tokenExpiry')
-        localStorage.removeItem('lastActivity')
+      // Clear sessionStorage
+      if (storage) {
+        storage.removeItem('auth_token')
+        storage.removeItem('user')
+        storage.removeItem('tokenExpiry')
+        storage.removeItem('lastActivity')
       }
     }
   }
 
   const checkAuth = () => {
-    if (typeof window !== 'undefined') {
-      const storedToken = localStorage.getItem('token')
-      const storedUser = localStorage.getItem('user')
-      const storedExpiry = localStorage.getItem('tokenExpiry')
-      const storedActivity = localStorage.getItem('lastActivity')
+    if (storage) {
+      const storedToken = storage.getItem('auth_token')
+      const storedUser = storage.getItem('user')
+      const storedExpiry = storage.getItem('tokenExpiry')
+      const storedActivity = storage.getItem('lastActivity')
       
       if (storedToken && storedUser && storedExpiry) {
         const expiry = parseInt(storedExpiry)

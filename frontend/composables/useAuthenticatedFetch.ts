@@ -13,8 +13,8 @@ export const useAuthenticatedFetch = () => {
    */
   const authenticatedFetch = async (url: string, options: any = {}) => {
     try {
-      // Get token from localStorage
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') || localStorage.getItem('token') : null
+      // Get token from sessionStorage (session-based auth)
+      const token = typeof window !== 'undefined' ? sessionStorage.getItem('auth_token') : null
       
       if (!token) {
         // No token - save current state and redirect to login
@@ -45,10 +45,12 @@ export const useAuthenticatedFetch = () => {
         // Save current state before redirect
         saveCurrentState()
         
-        // Clear invalid token
+        // Clear invalid token from sessionStorage
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('auth_token')
-          localStorage.removeItem('token')
+          sessionStorage.removeItem('auth_token')
+          sessionStorage.removeItem('user')
+          sessionStorage.removeItem('tokenExpiry')
+          sessionStorage.removeItem('lastActivity')
         }
         
         // Show user-friendly message
