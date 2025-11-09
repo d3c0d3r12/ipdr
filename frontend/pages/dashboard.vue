@@ -1,28 +1,12 @@
 <template>
   <div class="dashboard-container">
-    <!-- Header -->
-    <div class="dashboard-header">
-      <div class="header-left">
-        <h1 class="dashboard-title">
-          <span class="title-icon">📊</span>
-          COMMAND CENTER
-        </h1>
-        <p class="dashboard-subtitle">Delhi Police Cyber Cell - IPDR Tracking Hub</p>
-      </div>
-      <div class="header-right">
-        <SessionTimer />
-        <div class="user-info">
-          <span class="user-icon">👤</span>
-          <div class="user-details">
-            <p class="user-name">{{ user?.full_name || 'User' }}</p>
-            <p class="user-role">{{ user?.role || 'Officer' }}</p>
-          </div>
-        </div>
-        <button @click="handleLogout" class="logout-btn">
-          <span>🚪</span>
-          <span>Logout</span>
-        </button>
-      </div>
+    <!-- Page Title Only (Navigation is in app.vue) -->
+    <div class="page-title-section">
+      <h1 class="page-title">
+        <span class="title-icon">📊</span>
+        COMMAND CENTER
+      </h1>
+      <p class="page-subtitle">Delhi Police Cyber Cell - IPDR Tracking Hub</p>
     </div>
 
     <!-- Stats Cards -->
@@ -231,7 +215,7 @@ definePageMeta({
   middleware: 'auth'
 })
 
-const { user, logout } = useAuth()
+const { user } = useAuth()
 const { fir } = useApi()
 const router = useRouter()
 
@@ -312,11 +296,6 @@ const viewFir = (firNumber: string) => {
   router.push(`/fir/${encodeURIComponent(firNumber)}`)
 }
 
-const handleLogout = async () => {
-  await logout()
-  router.push('/login')
-}
-
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
   return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -330,85 +309,37 @@ const formatDate = (dateString: string) => {
   padding: 2rem;
 }
 
-/* Header */
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* Page Title Section */
+.page-title-section {
   margin-bottom: 2rem;
   padding-bottom: 1.5rem;
-  border-bottom: 2px solid rgba(0, 255, 255, 0.2);
+  border-bottom: 2px solid rgba(14, 165, 233, 0.3);
 }
 
-.dashboard-title {
+.page-title {
   font-size: 2rem;
   font-weight: 700;
-  color: #00ffff;
+  color: #0ea5e9;
   margin: 0;
   display: flex;
   align-items: center;
   gap: 0.75rem;
   font-family: 'Courier New', monospace;
-  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+  text-shadow: 0 0 20px rgba(14, 165, 233, 0.5);
+  animation: titleGlow 2s ease-in-out infinite;
 }
 
-.dashboard-subtitle {
-  color: #00ff88;
+@keyframes titleGlow {
+  0%, 100% { text-shadow: 0 0 20px rgba(14, 165, 233, 0.5); }
+  50% { text-shadow: 0 0 30px rgba(14, 165, 233, 0.8); }
+}
+
+.page-subtitle {
+  color: #10b981;
   margin: 0.5rem 0 0 0;
   font-size: 0.875rem;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: rgba(0, 255, 255, 0.05);
-  border: 1px solid rgba(0, 255, 255, 0.3);
-  border-radius: 8px;
-}
-
-.user-icon {
-  font-size: 1.5rem;
-}
-
-.user-name {
-  color: #ffffff;
-  font-weight: 600;
-  margin: 0;
-  font-size: 0.875rem;
-}
-
-.user-role {
-  color: #00ffff;
-  margin: 0;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-}
-
-.logout-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  background: rgba(255, 0, 0, 0.1);
-  border: 1px solid #ff0000;
-  border-radius: 6px;
-  color: #ff6b6b;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.logout-btn:hover {
-  background: rgba(255, 0, 0, 0.2);
-  transform: translateY(-2px);
+  font-weight: 500;
+  letter-spacing: 0.05em;
 }
 
 /* Stats Grid */

@@ -1,5 +1,8 @@
 <template>
   <div class="dp-app">
+    <!-- Video Background (optional - place video in public folder) -->
+    <VideoBackground v-if="showVideoBackground" :opacity="0.12" />
+    
     <!-- Only show navigation on authenticated pages (not login/signup) -->
     <DelhiPoliceNav v-if="showNav" />
     <NuxtPage />
@@ -12,6 +15,9 @@ import '~/assets/css/theme.css'
 
 const route = useRoute()
 const { checkAuth, isAuthenticated } = useAuth()
+
+// Enable/disable video background (set to true if you have a video file)
+const showVideoBackground = ref(false) // Set to true when you add video to public folder
 
 // Hide navigation on login and signup pages
 // Also hide if not authenticated
@@ -29,6 +35,20 @@ const showNav = computed(() => {
 
 onMounted(() => {
   checkAuth()
+  
+  // Check if video file exists
+  if (typeof window !== 'undefined') {
+    fetch('/background-video.mp4', { method: 'HEAD' })
+      .then(response => {
+        if (response.ok) {
+          showVideoBackground.value = true
+        }
+      })
+      .catch(() => {
+        // Video not found, keep disabled
+        showVideoBackground.value = false
+      })
+  }
 })
 </script>
 
