@@ -6,9 +6,13 @@ from utils.extract_html import _find_table, _extract_rows, write_original_csv, c
 from utils.csv_cleaner import _clean_one, build_lookup
 from utils.merge_data import merge_all
 from utils.advanced_infobyip import auto_fetch_batches_advanced  # Advanced anti-detection for InfoByIP
+from utils.security import sanitize_filename, validate_fir_number, sanitize_input
 import shutil
 import os
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Ensure directories exist
 Path(UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
@@ -71,12 +75,32 @@ async def upload_file(
 		bypass_cloudflare: If True, use Cloudflare bypass for unlimited InfoByIP access
 		background: Background tasks handler
 	"""
-	if not file.filename.endswith(('.html', '.htm')):
+	# Security: Validate filename
+	if not file.filename:
+		raise HTTPException(status_code=400, detail="Filename is required")
+	
+	# Security: Sanitize filename
+	safe_filename = sanitize_filename(file.filename)
+	logger.info(f"📁 Original filename: {file.filename}, Sanitized: {safe_filename}")
+	
+	# Security: Validate file extension
+	if not safe_filename.lower().endswith(('.html', '.htm')):
 		raise HTTPException(status_code=400, detail="Only HTML files allowed")
 	
-	# Read file
-	html_bytes = await file.read()
-	html_text = html_bytes.decode('utf-8', errors='replace')
+	# Security: Validate file size (max 50MB)
+	MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+	file_content = await file.read()
+	if len(file_content) > MAX_FILE_SIZE:
+		raise HTTPException(status_code=400, detail=f"File too large. Maximum size: 50MB")
+	
+	# Security: Validate and sanitize FIR number
+	fir = sanitize_input(fir, max_length=64)
+	if not validate_fir_number(fir):
+		logger.warning(f"🚨 Invalid FIR number: {fir}")
+		raise HTTPException(status_code=400, detail="Invalid FIR number format. Use alphanumeric, dash, underscore only")
+	
+	# Decode HTML
+	html_text = file_content.decode('utf-8', errors='replace')
 	
 	# Create run directory
 	ts = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
@@ -84,8 +108,10 @@ async def upload_file(
 	run_dir = Path(PROCESSED_DIR) / f"{ts}_{safe_fir}"
 	run_dir.mkdir(parents=True, exist_ok=True)
 	
-	# Save HTML snapshot to run directory
-	(run_dir / file.filename).write_bytes(html_bytes)
+	logger.info(f"✅ Created run directory: {run_dir}")
+	
+	# Save HTML snapshot to run directory with sanitized filename
+	(run_dir / safe_filename).write_bytes(file_content)
 	
 	# Extract IP activity
 	table_rows = _find_table(html_text)

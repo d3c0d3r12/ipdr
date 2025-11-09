@@ -34,12 +34,11 @@
 .dp-logo-icon {
   width: 56px;
   height: 56px;
-  background: white;
+  background: transparent;
   border-radius: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 20px rgba(30, 58, 138, 0.3);
   position: relative;
   overflow: hidden;
   padding: 0.25rem;

@@ -11,12 +11,20 @@
 import '~/assets/css/theme.css'
 
 const route = useRoute()
-const { checkAuth } = useAuth()
+const { checkAuth, isAuthenticated } = useAuth()
 
 // Hide navigation on login and signup pages
+// Also hide if not authenticated
 const showNav = computed(() => {
-  const publicPages = ['/login', '/signup']
-  return !publicPages.includes(route.path)
+  const publicPages = ['/login', '/signup', '/']
+  
+  // Never show nav on public pages
+  if (publicPages.includes(route.path)) {
+    return false
+  }
+  
+  // Only show nav if authenticated
+  return isAuthenticated.value
 })
 
 onMounted(() => {

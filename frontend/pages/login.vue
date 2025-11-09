@@ -209,25 +209,28 @@ const handleLogin = async () => {
   overflow: hidden;
 }
 
-/* Delhi Police Logo - Top Right Corner */
+/* Delhi Police Logo - Top Left Corner */
 .login-logo-corner {
   position: absolute;
-  top: 2rem;
-  right: 2rem;
-  z-index: 100;
-  opacity: 0.9;
-  transition: opacity 0.3s ease;
+  top: 4rem;
+  left: 4rem;
+  z-index: 300;
+  opacity: 0.95;
+  transition: all 0.3s ease;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
 }
 
 .login-logo-corner:hover {
   opacity: 1;
+  transform: scale(1.05);
+  filter: drop-shadow(0 6px 16px rgba(30, 58, 138, 0.6));
 }
 
 /* Animated Background */
 .cyber-bg {
   position: absolute;
   inset: 0;
-  opacity: 0.3;
+  opacity: 0.5;
 }
 
 .grid-lines {
@@ -275,6 +278,18 @@ const handleLogin = async () => {
     inset 0 0 20px rgba(0, 255, 255, 0.05);
   position: relative;
   z-index: 10;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Header */
@@ -601,7 +616,7 @@ const handleLogin = async () => {
 
   .login-logo-corner {
     top: 1rem;
-    right: 1rem;
+    left: 1rem;
   }
 }
 </style>
