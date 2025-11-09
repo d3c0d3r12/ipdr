@@ -1,7 +1,10 @@
 <template>
   <div class="dp-app">
+    <!-- Cyber Security Animated Background -->
+    <CyberBackground />
+    
     <!-- Video Background (optional - place video in public folder) -->
-    <VideoBackground v-if="showVideoBackground" :opacity="0.12" />
+    <VideoBackground v-if="showVideoBackground" :opacity="0.08" />
     
     <!-- Only show navigation on authenticated pages (not login/signup) -->
     <DelhiPoliceNav v-if="showNav" />
