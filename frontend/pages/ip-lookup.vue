@@ -583,7 +583,7 @@ const fixFinalReport = async () => {
     formData.append('file', selectedFinalReportFile.value)
     
     // Upload and fix (no authentication required)
-    const response = await fetch(`${apiBase}/api/lookup/fix-final-report`, {
+    const response = await fetch(`${apiBase}/api/fix-final-report`, {
       method: 'POST',
       body: formData
     })

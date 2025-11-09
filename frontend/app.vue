@@ -61,6 +61,13 @@ onMounted(() => {
   min-height: 100vh;
   background: var(--bg-primary);
   color: var(--text-primary);
+  position: relative;
+}
+
+/* Ensure content is above background */
+.dp-app > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Scrollbar Styling */

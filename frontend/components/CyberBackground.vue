@@ -131,10 +131,11 @@ const getParticleStyle = (index: number) => {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: -1;
+  z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  background: #000000;
+  background: transparent;
+  opacity: 0.3;
 }
 
 /* Grid Overlay */
@@ -467,7 +468,7 @@ const getParticleStyle = (index: number) => {
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  opacity: 0.2;
+  opacity: 0.08;
   z-index: 10;
 }
 
@@ -524,6 +525,7 @@ const getParticleStyle = (index: number) => {
   width: 200px;
   text-align: center;
   animation: scannerPulse 3s ease-in-out infinite;
+  opacity: 0.6;
 }
 
 .hand-icon {
