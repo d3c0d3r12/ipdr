@@ -53,8 +53,54 @@
     
     <!-- Center Text Overlay -->
     <div class="center-overlay">
+      <div class="login-prompt">PLEASE LOGIN BELOW</div>
       <div class="restricted-text">RESTRICTED ACCESS ONLY</div>
       <div class="system-status">SYSTEM ACTIVE</div>
+    </div>
+    
+    <!-- Biometric Handprint Scanner (Right Side) -->
+    <div class="handprint-scanner">
+      <div class="hand-icon">
+        <svg viewBox="0 0 100 120" class="hand-svg">
+          <!-- Thumb -->
+          <ellipse cx="25" cy="70" rx="8" ry="20" fill="none" stroke="rgba(0, 200, 255, 0.6)" stroke-width="1.5"/>
+          <!-- Index finger -->
+          <ellipse cx="40" cy="30" rx="6" ry="25" fill="none" stroke="rgba(0, 200, 255, 0.6)" stroke-width="1.5"/>
+          <!-- Middle finger -->
+          <ellipse cx="50" cy="25" rx="6" ry="28" fill="none" stroke="rgba(0, 200, 255, 0.6)" stroke-width="1.5"/>
+          <!-- Ring finger -->
+          <ellipse cx="60" cy="30" rx="6" ry="25" fill="none" stroke="rgba(0, 200, 255, 0.6)" stroke-width="1.5"/>
+          <!-- Pinky -->
+          <ellipse cx="70" cy="40" rx="5" ry="20" fill="none" stroke="rgba(0, 200, 255, 0.6)" stroke-width="1.5"/>
+          <!-- Palm -->
+          <ellipse cx="50" cy="75" rx="20" ry="25" fill="none" stroke="rgba(0, 200, 255, 0.6)" stroke-width="1.5"/>
+          <!-- Fingerprint lines -->
+          <circle cx="50" cy="75" r="5" fill="none" stroke="rgba(0, 200, 255, 0.4)" stroke-width="0.5"/>
+          <circle cx="50" cy="75" r="8" fill="none" stroke="rgba(0, 200, 255, 0.4)" stroke-width="0.5"/>
+          <circle cx="50" cy="75" r="11" fill="none" stroke="rgba(0, 200, 255, 0.4)" stroke-width="0.5"/>
+        </svg>
+      </div>
+      <div class="scanner-text">SUBJECT IDENTIFIED</div>
+      <div class="scanner-status">BIOMETRIC SCAN COMPLETE</div>
+    </div>
+    
+    <!-- World Map Outline -->
+    <div class="world-map">
+      <svg viewBox="0 0 1000 500" class="map-svg">
+        <!-- Simplified world map continents -->
+        <path d="M 200,150 L 250,140 L 280,160 L 300,150 L 320,170 L 300,190 L 280,180 L 250,200 L 220,180 Z" 
+              fill="none" stroke="rgba(0, 200, 255, 0.2)" stroke-width="1"/>
+        <path d="M 400,200 L 450,180 L 500,190 L 520,210 L 500,240 L 470,250 L 440,240 L 420,220 Z" 
+              fill="none" stroke="rgba(0, 200, 255, 0.2)" stroke-width="1"/>
+        <path d="M 600,180 L 680,170 L 720,190 L 740,220 L 720,250 L 680,260 L 640,250 L 620,220 Z" 
+              fill="none" stroke="rgba(0, 200, 255, 0.2)" stroke-width="1"/>
+        <!-- Grid lines on map -->
+        <line x1="0" y1="150" x2="1000" y2="150" stroke="rgba(0, 200, 255, 0.1)" stroke-width="0.5"/>
+        <line x1="0" y1="250" x2="1000" y2="250" stroke="rgba(0, 200, 255, 0.1)" stroke-width="0.5"/>
+        <line x1="250" y1="0" x2="250" y2="500" stroke="rgba(0, 200, 255, 0.1)" stroke-width="0.5"/>
+        <line x1="500" y1="0" x2="500" y2="500" stroke="rgba(0, 200, 255, 0.1)" stroke-width="0.5"/>
+        <line x1="750" y1="0" x2="750" y2="500" stroke="rgba(0, 200, 255, 0.1)" stroke-width="0.5"/>
+      </svg>
     </div>
   </div>
 </template>
@@ -421,7 +467,19 @@ const getParticleStyle = (index: number) => {
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  opacity: 0.15;
+  opacity: 0.2;
+  z-index: 10;
+}
+
+.login-prompt {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgba(0, 200, 255, 0.7);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 15px rgba(0, 200, 255, 0.4);
+  margin-bottom: 1.5rem;
+  animation: promptPulse 2s ease-in-out infinite;
 }
 
 .restricted-text {
@@ -443,6 +501,11 @@ const getParticleStyle = (index: number) => {
   animation: statusBlink 1.5s ease-in-out infinite;
 }
 
+@keyframes promptPulse {
+  0%, 100% { opacity: 0.6; text-shadow: 0 0 15px rgba(0, 200, 255, 0.4); }
+  50% { opacity: 1; text-shadow: 0 0 25px rgba(0, 200, 255, 0.7); }
+}
+
 @keyframes textGlow {
   0%, 100% { text-shadow: 0 0 20px rgba(0, 200, 255, 0.3); }
   50% { text-shadow: 0 0 30px rgba(0, 200, 255, 0.6); }
@@ -450,6 +513,80 @@ const getParticleStyle = (index: number) => {
 
 @keyframes statusBlink {
   0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* Biometric Handprint Scanner */
+.handprint-scanner {
+  position: absolute;
+  top: 30%;
+  right: 10%;
+  width: 200px;
+  text-align: center;
+  animation: scannerPulse 3s ease-in-out infinite;
+}
+
+.hand-icon {
+  width: 120px;
+  height: 140px;
+  margin: 0 auto 1rem;
+  filter: drop-shadow(0 0 15px rgba(0, 200, 255, 0.6));
+}
+
+.hand-svg {
+  width: 100%;
+  height: 100%;
+  animation: handGlow 2s ease-in-out infinite;
+}
+
+@keyframes handGlow {
+  0%, 100% { filter: drop-shadow(0 0 10px rgba(0, 200, 255, 0.4)); }
+  50% { filter: drop-shadow(0 0 20px rgba(0, 200, 255, 0.8)); }
+}
+
+.scanner-text {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(0, 200, 255, 0.8);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 10px rgba(0, 200, 255, 0.5);
+  margin-bottom: 0.5rem;
+}
+
+.scanner-status {
+  font-size: 0.625rem;
+  color: rgba(0, 255, 100, 0.6);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.05em;
+  animation: statusBlink 1.5s ease-in-out infinite;
+}
+
+@keyframes scannerPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* World Map */
+.world-map {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%;
+  height: 60%;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.map-svg {
+  width: 100%;
+  height: 100%;
+  animation: mapPulse 4s ease-in-out infinite;
+}
+
+@keyframes mapPulse {
+  0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
 }
 
@@ -469,9 +606,28 @@ const getParticleStyle = (index: number) => {
     font-size: 1rem;
   }
   
+  .login-prompt {
+    font-size: 0.875rem;
+  }
+  
   .target-marker {
     width: 40px;
     height: 40px;
+  }
+  
+  .handprint-scanner {
+    width: 120px;
+    right: 5%;
+  }
+  
+  .hand-icon {
+    width: 80px;
+    height: 100px;
+  }
+  
+  .world-map {
+    width: 90%;
+    height: 50%;
   }
 }
 </style>
