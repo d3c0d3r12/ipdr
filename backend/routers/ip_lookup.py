@@ -10,7 +10,7 @@ from core.db import get_db
 from models.user_auth import User
 from routers.auth_secure import get_current_user
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import csv
 import json
 import asyncio
@@ -18,6 +18,7 @@ import logging
 from datetime import datetime
 from bs4 import BeautifulSoup
 import pandas as pd
+from utils.security import sanitize_input, validate_input, sanitize_filename
 
 # Setup logger
 logger = logging.getLogger(__name__)
