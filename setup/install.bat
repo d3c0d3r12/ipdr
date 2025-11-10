@@ -44,13 +44,48 @@ echo.
 
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Python is not installed or not in PATH!
+    color 0C
     echo.
-    echo Please install Python 3.8+ from: https://www.python.org/downloads/
+    echo ============================================================================
+    echo                    PYTHON NOT FOUND!
+    echo ============================================================================
     echo.
-    echo IMPORTANT: During installation, check "Add Python to PATH"
+    echo Python is not installed or not in PATH.
     echo.
-    pause
+    echo OPTION 1: Open Download Page
+    echo    We can open the Python download page for you.
+    echo    Download and install Python 3.8 or higher.
+    echo    IMPORTANT: Check "Add Python to PATH" during installation!
+    echo.
+    echo OPTION 2: Manual Download
+    echo    Go to: https://www.python.org/downloads/
+    echo    Download Python 3.8 or higher
+    echo    Run installer and check "Add Python to PATH"
+    echo.
+    echo ============================================================================
+    echo.
+    set /p OPEN_PYTHON="Do you want to open the download page now? (Y/N): "
+    if /i "%OPEN_PYTHON%"=="Y" (
+        echo.
+        echo Opening Python download page...
+        start https://www.python.org/downloads/
+        echo.
+        echo Please:
+        echo 1. Download Python 3.8 or higher
+        echo 2. Run the installer
+        echo 3. CHECK "Add Python to PATH" ^(IMPORTANT!^)
+        echo 4. Complete the installation
+        echo 5. Restart this script
+        echo.
+    ) else (
+        echo.
+        echo Please install Python manually from: https://www.python.org/downloads/
+        echo.
+        echo IMPORTANT: Check "Add Python to PATH" during installation!
+        echo.
+    )
+    echo Press any key to exit...
+    pause >nul
     exit /b 1
 )
 
@@ -84,13 +119,48 @@ echo.
 
 node --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Node.js is not installed or not in PATH!
+    color 0C
     echo.
-    echo Please install Node.js 16+ from: https://nodejs.org/
+    echo ============================================================================
+    echo                    NODE.JS NOT FOUND!
+    echo ============================================================================
     echo.
-    echo Recommended: Download LTS version
+    echo Node.js is not installed or not in PATH.
     echo.
-    pause
+    echo OPTION 1: Open Download Page
+    echo    We can open the Node.js download page for you.
+    echo    Download and install Node.js 16 or higher (LTS recommended).
+    echo.
+    echo OPTION 2: Manual Download
+    echo    Go to: https://nodejs.org/
+    echo    Download LTS version (recommended)
+    echo    Run installer with default settings
+    echo.
+    echo ============================================================================
+    echo.
+    set /p OPEN_NODE="Do you want to open the download page now? (Y/N): "
+    if /i "%OPEN_NODE%"=="Y" (
+        echo.
+        echo Opening Node.js download page...
+        start https://nodejs.org/
+        echo.
+        echo Please:
+        echo 1. Download Node.js LTS version
+        echo 2. Run the installer
+        echo 3. Accept default settings
+        echo 4. Complete the installation
+        echo 5. Restart your computer
+        echo 6. Run this script again
+        echo.
+    ) else (
+        echo.
+        echo Please install Node.js manually from: https://nodejs.org/
+        echo.
+        echo Recommended: LTS version
+        echo.
+    )
+    echo Press any key to exit...
+    pause >nul
     exit /b 1
 )
 
