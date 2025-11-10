@@ -170,13 +170,28 @@ echo STEP 3/6: Verifying Installations
 echo ============================================================================
 echo.
 
-REM Verify Python
+REM Try to verify Python (may need PATH refresh)
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Python verification failed!
-    echo Please restart your computer and run this script again.
-    pause
-    exit /b 1
+    echo [WARNING] Python not found in PATH yet.
+    echo [INFO] Trying to refresh environment...
+    call :RefreshEnv
+    
+    REM Try again after refresh
+    python --version >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo.
+        echo [IMPORTANT] Python installed but PATH not refreshed!
+        echo.
+        echo SOLUTION: Please restart your computer and run this script again:
+        echo    1. Restart computer
+        echo    2. Double-click AUTO-INSTALL.bat again
+        echo    3. Script will skip Python/Node.js (already installed)
+        echo    4. Will install packages only
+        echo.
+        pause
+        exit /b 1
+    )
 )
 
 echo [OK] Python verified:
@@ -198,10 +213,25 @@ echo.
 REM Verify Node.js
 node --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Node.js verification failed!
-    echo Please restart your computer and run this script again.
-    pause
-    exit /b 1
+    echo [WARNING] Node.js not found in PATH yet.
+    echo [INFO] Trying to refresh environment...
+    call :RefreshEnv
+    
+    REM Try again after refresh
+    node --version >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo.
+        echo [IMPORTANT] Node.js installed but PATH not refreshed!
+        echo.
+        echo SOLUTION: Please restart your computer and run this script again:
+        echo    1. Restart computer
+        echo    2. Double-click AUTO-INSTALL.bat again
+        echo    3. Script will skip installations (already done)
+        echo    4. Will install packages only
+        echo.
+        pause
+        exit /b 1
+    )
 )
 
 echo [OK] Node.js verified:
