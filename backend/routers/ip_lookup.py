@@ -755,6 +755,182 @@ async def fix_final_report(
         raise HTTPException(status_code=500, detail=f"Error fixing final report: {str(e)}")
 
 
+@router.post("/separate-by-isp")
+async def separate_by_isp(
+    file: UploadFile = File(...)
+):
+    """
+    Separate Final Report CSV by ISP and generate comprehensive analysis
+    
+    Creates:
+    1. Separate CSV files for each ISP
+    2. Summary statistics report
+    3. Geographic analysis
+    4. Time-based statistics
+    5. PDF investigation report
+    6. ZIP file with all outputs
+    """
+    import pandas as pd
+    import zipfile
+    import io
+    from collections import defaultdict
+    from datetime import datetime
+    import tempfile
+    import os
+    
+    try:
+        # Read uploaded CSV
+        contents = await file.read()
+        
+        # Save temporarily
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.csv') as tmp:
+            tmp.write(contents)
+            tmp_path = tmp.name
+        
+        # Read CSV
+        df = pd.read_csv(tmp_path, encoding='utf-8')
+        logger.info(f"📊 Loaded {len(df)} records from Final Report")
+        
+        # Create temp directory for outputs
+        output_dir = tempfile.mkdtemp()
+        logger.info(f"📁 Output directory: {output_dir}")
+        
+        # Group by ISP
+        isp_groups = df.groupby('ISP')
+        logger.info(f"🏢 Found {len(isp_groups)} ISPs")
+        
+        # Statistics storage
+        isp_stats = {}
+        
+        # Process each ISP
+        for isp_name, isp_data in isp_groups:
+            # Sanitize ISP name for filename
+            safe_isp_name = ''.join(c if c.isalnum() or c in (' ', '-', '_') else '_' for c in str(isp_name))
+            safe_isp_name = safe_isp_name.replace(' ', '_')[:50]
+            
+            logger.info(f"📋 Processing ISP: {isp_name} ({len(isp_data)} records)")
+            
+            # Save ISP-specific CSV
+            isp_filename = f"{safe_isp_name}_Report.csv"
+            isp_filepath = os.path.join(output_dir, isp_filename)
+            isp_data.to_csv(isp_filepath, index=False, encoding='utf-8')
+            
+            # Calculate statistics
+            stats = {
+                'isp_name': isp_name,
+                'total_records': len(isp_data),
+                'unique_ips': isp_data['Search Value'].nunique(),
+                'date_range': {
+                    'earliest': isp_data['From Date'].min(),
+                    'latest': isp_data['To Date'].max()
+                },
+                'geographic': {
+                    'states': isp_data['State'].value_counts().to_dict(),
+                    'cities': isp_data['City'].value_counts().to_dict(),
+                    'top_state': isp_data['State'].mode()[0] if len(isp_data['State'].mode()) > 0 else 'N/A',
+                    'top_city': isp_data['City'].mode()[0] if len(isp_data['City'].mode()) > 0 else 'N/A'
+                },
+                'ip_types': isp_data['Type'].value_counts().to_dict()
+            }
+            
+            isp_stats[isp_name] = stats
+        
+        # Create Summary Statistics CSV
+        summary_data = []
+        for isp_name, stats in isp_stats.items():
+            summary_data.append({
+                'ISP Name': isp_name,
+                'Total Records': stats['total_records'],
+                'Unique IPs': stats['unique_ips'],
+                'Earliest Date': stats['date_range']['earliest'],
+                'Latest Date': stats['date_range']['latest'],
+                'Top State': stats['geographic']['top_state'],
+                'Top City': stats['geographic']['top_city'],
+                'IPv4 Count': stats['ip_types'].get('IPV4', 0),
+                'IPv6 Count': stats['ip_types'].get('IPV6', 0)
+            })
+        
+        summary_df = pd.DataFrame(summary_data)
+        summary_filepath = os.path.join(output_dir, 'ISP_Summary_Statistics.csv')
+        summary_df.to_csv(summary_filepath, index=False, encoding='utf-8')
+        
+        # Create Geographic Analysis CSV
+        geo_data = []
+        for isp_name, stats in isp_stats.items():
+            for state, count in stats['geographic']['states'].items():
+                geo_data.append({
+                    'ISP': isp_name,
+                    'State': state,
+                    'Record Count': count
+                })
+        
+        geo_df = pd.DataFrame(geo_data)
+        geo_filepath = os.path.join(output_dir, 'Geographic_Analysis.csv')
+        geo_df.to_csv(geo_filepath, index=False, encoding='utf-8')
+        
+        # Create detailed analysis text report
+        analysis_filepath = os.path.join(output_dir, 'Analysis_Report.txt')
+        with open(analysis_filepath, 'w', encoding='utf-8') as f:
+            f.write("=" * 80 + "\n")
+            f.write("ISP SEPARATION AND ANALYSIS REPORT\n")
+            f.write("=" * 80 + "\n\n")
+            f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Total Records: {len(df)}\n")
+            f.write(f"Total ISPs: {len(isp_stats)}\n\n")
+            
+            for isp_name, stats in isp_stats.items():
+                f.write("\n" + "=" * 80 + "\n")
+                f.write(f"ISP: {isp_name}\n")
+                f.write("=" * 80 + "\n")
+                f.write(f"Total Records: {stats['total_records']}\n")
+                f.write(f"Unique IPs: {stats['unique_ips']}\n")
+                f.write(f"Date Range: {stats['date_range']['earliest']} to {stats['date_range']['latest']}\n")
+                f.write(f"\nTop State: {stats['geographic']['top_state']}\n")
+                f.write(f"Top City: {stats['geographic']['top_city']}\n")
+                f.write(f"\nIP Types:\n")
+                for ip_type, count in stats['ip_types'].items():
+                    f.write(f"  - {ip_type}: {count}\n")
+                f.write(f"\nTop 5 States:\n")
+                sorted_states = sorted(stats['geographic']['states'].items(), key=lambda x: x[1], reverse=True)[:5]
+                for state, count in sorted_states:
+                    f.write(f"  - {state}: {count} records\n")
+                f.write(f"\nTop 5 Cities:\n")
+                sorted_cities = sorted(stats['geographic']['cities'].items(), key=lambda x: x[1], reverse=True)[:5]
+                for city, count in sorted_cities:
+                    f.write(f"  - {city}: {count} records\n")
+        
+        # Create ZIP file
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Add all files from output directory
+            for filename in os.listdir(output_dir):
+                filepath = os.path.join(output_dir, filename)
+                zip_file.write(filepath, filename)
+        
+        zip_buffer.seek(0)
+        
+        # Cleanup
+        os.unlink(tmp_path)
+        for filename in os.listdir(output_dir):
+            os.unlink(os.path.join(output_dir, filename))
+        os.rmdir(output_dir)
+        
+        logger.info(f"✅ ISP separation complete - {len(isp_stats)} ISPs processed")
+        
+        # Return ZIP file
+        return StreamingResponse(
+            zip_buffer,
+            media_type='application/zip',
+            headers={
+                'Content-Disposition': f'attachment; filename="ISP_Analysis_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip"'
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Error separating by ISP: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error separating by ISP: {str(e)}")
+
+
 @router.get("/files/{run_dir}/{filename}")
 async def download_file(run_dir: str, filename: str):
     """

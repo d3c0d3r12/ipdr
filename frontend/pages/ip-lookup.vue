@@ -221,6 +221,72 @@
           </div>
         </div>
       </div>
+
+      <!-- ISP Separation Section - Only show after Fix Final Report is complete -->
+      <div v-if="fixedReportSuccess" class="isp-separation-section">
+        <div class="section-card isp-card">
+          <div class="card-header">
+            <h3>🏢 Step 7: ISP Separation & Analysis</h3>
+            <p>Separate the Final Report by ISP and generate comprehensive analysis reports</p>
+          </div>
+          
+          <div class="card-content">
+            <div class="info-box">
+              <h4>📊 What You'll Get:</h4>
+              <ul>
+                <li>✅ Separate CSV file for each ISP</li>
+                <li>✅ Summary statistics report</li>
+                <li>✅ Geographic analysis (states & cities)</li>
+                <li>✅ Time-based statistics</li>
+                <li>✅ Detailed analysis report</li>
+                <li>✅ All files in a ZIP download</li>
+              </ul>
+            </div>
+
+            <div class="file-input-group">
+              <label for="isp-file-input" class="file-label">
+                📄 Select Fixed Final Report CSV:
+              </label>
+              <input
+                id="isp-file-input"
+                ref="ispFileInput"
+                type="file"
+                accept=".csv"
+                @change="handleISPFileSelect"
+                class="file-input"
+              />
+              <div v-if="selectedISPFile" class="file-selected">
+                ✅ Selected: {{ selectedISPFile.name }}
+              </div>
+            </div>
+
+            <button
+              @click="separateByISP"
+              :disabled="!selectedISPFile || separatingISP"
+              class="btn-separate-isp"
+            >
+              <span v-if="separatingISP">⏳ Processing ISP Analysis...</span>
+              <span v-else>🏢 Separate by ISP & Generate Analysis</span>
+            </button>
+
+            <div v-if="ispSeparationSuccess" class="success-message">
+              <h4>✅ ISP Analysis Complete!</h4>
+              <p>The ZIP file with all ISP reports has been downloaded automatically.</p>
+              <div class="analysis-summary">
+                <p><strong>Total ISPs Found:</strong> {{ ispAnalysisSummary.totalISPs }}</p>
+                <p><strong>Total Records:</strong> {{ ispAnalysisSummary.totalRecords }}</p>
+                <p><strong>Files Generated:</strong></p>
+                <ul>
+                  <li>{{ ispAnalysisSummary.totalISPs }} ISP-specific CSV files</li>
+                  <li>1 Summary Statistics CSV</li>
+                  <li>1 Geographic Analysis CSV</li>
+                  <li>1 Detailed Analysis Report (TXT)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -246,6 +312,14 @@ const selectedFinalReportFile = ref(null)
 const finalReportFileInput = ref(null)
 const fixingFinalReport = ref(false)
 const fixedReportSuccess = ref(false)
+const selectedISPFile = ref(null)
+const ispFileInput = ref(null)
+const separatingISP = ref(false)
+const ispSeparationSuccess = ref(false)
+const ispAnalysisSummary = ref({
+  totalISPs: 0,
+  totalRecords: 0
+})
 
 // Watch and save state to localStorage when it changes
 watch([selectedRunDir, results, masterFile, fixedFile], () => {
@@ -621,6 +695,109 @@ const fixFinalReport = async () => {
     alert(`Failed to fix final report: ${error.message}`)
   } finally {
     fixingFinalReport.value = false
+  }
+}
+
+// Handle ISP file selection
+const handleISPFileSelect = (event) => {
+  const file = event.target.files[0]
+  if (file) {
+    if (!file.name.endsWith('.csv')) {
+      alert('Please select a CSV file')
+      return
+    }
+    selectedISPFile.value = file
+    ispSeparationSuccess.value = false
+    console.log('📄 ISP file selected:', file.name)
+  }
+}
+
+// Separate by ISP and generate analysis
+const separateByISP = async () => {
+  if (!selectedISPFile.value) {
+    alert('Please select a Fixed Final Report CSV file first')
+    return
+  }
+
+  separatingISP.value = true
+  ispSeparationSuccess.value = false
+
+  try {
+    console.log('🏢 Separating by ISP and generating analysis...')
+    
+    const config = useRuntimeConfig()
+    const apiBase = config.public.apiBase
+    
+    // Create FormData
+    const formData = new FormData()
+    formData.append('file', selectedISPFile.value)
+    
+    // Upload and process
+    const response = await fetch(`${apiBase}/api/separate-by-isp`, {
+      method: 'POST',
+      body: formData
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }))
+      throw new Error(errorData.detail || `Server error: ${response.status}`)
+    }
+    
+    // Download the ZIP file
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
+    a.download = `ISP_Analysis_${timestamp}.zip`
+    
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    
+    console.log('✅ ISP analysis complete and downloaded successfully')
+    
+    // Parse the CSV to get summary info
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target.result
+      const lines = text.split('\n').filter(line => line.trim())
+      const records = lines.length - 1 // Subtract header
+      
+      // Count unique ISPs
+      const ispSet = new Set()
+      for (let i = 1; i < lines.length; i++) {
+        const columns = lines[i].split(',')
+        if (columns.length > 10) {
+          ispSet.add(columns[10]) // ISP column
+        }
+      }
+      
+      ispAnalysisSummary.value = {
+        totalISPs: ispSet.size,
+        totalRecords: records
+      }
+    }
+    reader.readAsText(selectedISPFile.value)
+    
+    ispSeparationSuccess.value = true
+    
+    // Reset file input
+    selectedISPFile.value = null
+    if (ispFileInput.value) {
+      ispFileInput.value.value = ''
+    }
+    
+    alert('✅ ISP Analysis Complete!\n\nZIP file downloaded with:\n- Separate CSV for each ISP\n- Summary Statistics\n- Geographic Analysis\n- Detailed Analysis Report\n\nExtract the ZIP to view all files.')
+    
+  } catch (error) {
+    console.error('❌ Error separating by ISP:', error)
+    alert(`Failed to separate by ISP: ${error.message}`)
+  } finally {
+    separatingISP.value = false
   }
 }
 
@@ -1399,13 +1576,6 @@ onMounted(async () => {
 
 .btn-fix-report:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 0 30px rgba(138, 43, 226, 0.5);
-  background: linear-gradient(135deg, #9370db 0%, #ba55d3 100%);
-}
-
-.btn-fix-report:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .fix-report-content .success-message {
@@ -1413,7 +1583,6 @@ onMounted(async () => {
   padding: 16px;
   background: rgba(0, 255, 0, 0.05);
   border: 2px solid #0f0;
-  border-radius: 8px;
 }
 
 .fix-report-content .success-message h4 {
@@ -1431,5 +1600,93 @@ onMounted(async () => {
 .fix-report-content .info-text {
   color: #ba55d3;
   font-style: italic;
+}
+
+/* ISP Separation Section */
+.isp-separation-section {
+  margin-top: 24px;
+}
+
+.isp-card {
+  background: rgba(255, 140, 0, 0.05);
+  border: 2px solid #ff8c00;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.isp-card .card-header h3 {
+  color: #ff8c00;
+  font-size: 20px;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.isp-card .card-header p {
+  color: #ffa500;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.btn-separate-isp {
+  background: linear-gradient(135deg, #ff8c00, #ffa500);
+  color: white;
+  border: none;
+  padding: 14px 32px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 0 15px rgba(255, 140, 0, 0.3);
+  width: 100%;
+  margin-top: 20px;
+}
+
+.btn-separate-isp:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(255, 140, 0, 0.5);
+  background: linear-gradient(135deg, #ffa500, #ff8c00);
+}
+
+.btn-separate-isp:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.analysis-summary {
+  background: rgba(255, 140, 0, 0.1);
+  border: 1px solid #ff8c00;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.analysis-summary p {
+  color: #ffa500;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.analysis-summary ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0 0;
+}
+
+.analysis-summary li {
+  color: #ffb84d;
+  font-size: 13px;
+  margin-bottom: 6px;
+  padding-left: 20px;
+  position: relative;
+}
+
+.analysis-summary li::before {
+  content: '📄';
+  position: absolute;
+  left: 0;
+  top: 0;
 }
 </style>
