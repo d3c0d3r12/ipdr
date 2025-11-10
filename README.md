@@ -19,7 +19,24 @@ A secure, automated IP Data Record (IPDR) tracking and analysis system for Delhi
 - Node.js 16 or higher
 - Internet connection
 
-### Installation (3 Steps)
+### Installation (2 Options)
+
+#### **Option 1: Fully Automatic** ⭐ RECOMMENDED
+
+1. **Copy Project** to your system
+
+2. **Run Automatic Installer**
+   ```cmd
+   Double-click: AUTO-INSTALL.bat
+   ```
+   This will automatically:
+   - Download Python 3.11
+   - Download Node.js LTS
+   - Install both with PATH configuration
+   - Install all dependencies
+   - Complete in 30 minutes!
+
+#### **Option 2: Manual**
 
 1. **Install Python & Node.js** (one-time)
    - Python: https://www.python.org/downloads/ (✅ Check "Add to PATH")
@@ -31,7 +48,7 @@ A secure, automated IP Data Record (IPDR) tracking and analysis system for Delhi
    ```cmd
    Double-click: INSTALL.bat
    ```
-   Wait 10-15 minutes for automatic dependency installation.
+   Wait 10-15 minutes for dependency installation.
 
 ### Start Application
 
@@ -53,12 +70,14 @@ Browser opens automatically to http://localhost:3000
 ## 🔧 Available Scripts
 
 ### **Main Folder (Easy Access):**
-- **INSTALL.bat** - Install all dependencies (first time)
+- **AUTO-INSTALL.bat** ⭐ - Fully automatic installer (downloads everything)
+- **INSTALL.bat** - Install dependencies (requires Python/Node.js)
 - **START.bat** - Start servers (daily use)
 - **STOP.bat** - Stop all servers
 
 ### **Setup Folder (Organized):**
-- **setup/install.bat** - Actual installer
+- **setup/auto-install-all.bat** - Fully automatic installer
+- **setup/install.bat** - Manual installer
 - **setup/setup.bat** - Simple startup
 - **setup/start-servers.bat** - Enhanced startup with checks
 - **setup/stop-servers.bat** - Server shutdown
@@ -120,12 +139,14 @@ Browser opens automatically to http://localhost:3000
 
 ```
 New FIR/
-├── INSTALL.bat              # Install dependencies (main)
-├── START.bat                # Start servers (main)
-├── STOP.bat                 # Stop servers (main)
+├── AUTO-INSTALL.bat         # Fully automatic installer ⭐
+├── INSTALL.bat              # Manual installer
+├── START.bat                # Start servers
+├── STOP.bat                 # Stop servers
 │
 ├── setup/                   # Setup scripts (organized)
-│   ├── install.bat         # Actual installer
+│   ├── auto-install-all.bat # Fully automatic installer
+│   ├── install.bat         # Manual installer
 │   ├── setup.bat           # Simple startup
 │   ├── start-servers.bat   # Enhanced startup
 │   ├── stop-servers.bat    # Server shutdown
@@ -193,10 +214,18 @@ For issues or questions:
 
 ## 🎉 Quick Reference
 
-**First Time:**
+**First Time (Automatic):**
 ```cmd
-1. INSTALL.bat    # Install dependencies
-2. START.bat      # Start servers
+1. AUTO-INSTALL.bat    # Downloads & installs everything (30 min)
+2. Restart computer
+3. START.bat           # Start servers
+```
+
+**First Time (Manual):**
+```cmd
+1. Install Python & Node.js manually
+2. INSTALL.bat         # Install dependencies
+3. START.bat           # Start servers
 ```
 
 **Daily Use:**

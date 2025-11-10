@@ -28,7 +28,26 @@ New FIR/
 
 ---
 
-## 🚀 **3 SIMPLE STEPS:**
+## 🚀 **2 SUPER SIMPLE OPTIONS:**
+
+### **OPTION 1: FULLY AUTOMATIC** ⭐ **RECOMMENDED**
+
+**Just 1 Click - Everything Automatic!**
+
+**Double-click:** `AUTO-INSTALL.bat`
+
+This will automatically:
+- ✅ Download Python 3.11
+- ✅ Download Node.js LTS
+- ✅ Install both with PATH
+- ✅ Install all packages
+- ✅ Everything done in 30 minutes!
+
+**NO MANUAL STEPS!** Just click and wait! 🎉
+
+---
+
+### **OPTION 2: Manual Installation** (If you prefer)
 
 ### **Step 1: Install Prerequisites** (One-Time, 10 minutes)
 
@@ -55,6 +74,8 @@ Wait for it to finish. You'll see:
 ✅ Node.js packages installed
 ✅ Installation complete!
 ```
+
+---
 
 ### **Step 3: Start Application** (Daily, 1 minute)
 
