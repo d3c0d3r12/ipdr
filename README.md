@@ -29,14 +29,14 @@ A secure, automated IP Data Record (IPDR) tracking and analysis system for Delhi
 
 3. **Run Installation**
    ```cmd
-   Double-click: install.bat
+   Double-click: INSTALL.bat
    ```
    Wait 10-15 minutes for automatic dependency installation.
 
 ### Start Application
 
 ```cmd
-Double-click: setup.bat
+Double-click: START.bat
 ```
 
 Browser opens automatically to http://localhost:3000
@@ -52,10 +52,16 @@ Browser opens automatically to http://localhost:3000
 
 ## 🔧 Available Scripts
 
-- **install.bat** - Install all dependencies (first time)
-- **setup.bat** - Start servers (daily use)
-- **start-servers.bat** - Start with dependency checks
-- **stop-servers.bat** - Stop all servers
+### **Main Folder (Easy Access):**
+- **INSTALL.bat** - Install all dependencies (first time)
+- **START.bat** - Start servers (daily use)
+- **STOP.bat** - Stop all servers
+
+### **Setup Folder (Organized):**
+- **setup/install.bat** - Actual installer
+- **setup/setup.bat** - Simple startup
+- **setup/start-servers.bat** - Enhanced startup with checks
+- **setup/stop-servers.bat** - Server shutdown
 
 ## 📊 System Requirements
 
@@ -114,17 +120,28 @@ Browser opens automatically to http://localhost:3000
 
 ```
 New FIR/
-├── install.bat              # Install dependencies
-├── setup.bat                # Start servers
+├── INSTALL.bat              # Install dependencies (main)
+├── START.bat                # Start servers (main)
+├── STOP.bat                 # Stop servers (main)
+│
+├── setup/                   # Setup scripts (organized)
+│   ├── install.bat         # Actual installer
+│   ├── setup.bat           # Simple startup
+│   ├── start-servers.bat   # Enhanced startup
+│   ├── stop-servers.bat    # Server shutdown
+│   └── README.md           # Setup folder guide
+│
 ├── backend/                 # FastAPI backend
 │   ├── main.py             # Entry point
 │   ├── routers/            # API routes
 │   ├── models/             # Database models
 │   └── utils/              # Utilities
+│
 ├── frontend/                # Nuxt.js frontend
 │   ├── pages/              # Page components
 │   ├── components/         # Vue components
 │   └── composables/        # Composables
+│
 └── docs/                    # Documentation
 ```
 
@@ -178,18 +195,18 @@ For issues or questions:
 
 **First Time:**
 ```cmd
-1. install.bat    # Install dependencies
-2. setup.bat      # Start servers
+1. INSTALL.bat    # Install dependencies
+2. START.bat      # Start servers
 ```
 
 **Daily Use:**
 ```cmd
-setup.bat         # Start and go!
+START.bat         # Start and go!
 ```
 
 **Stop Servers:**
 ```cmd
-stop-servers.bat  # Clean shutdown
+STOP.bat          # Clean shutdown
 ```
 
 ---
