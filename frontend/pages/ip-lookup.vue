@@ -166,68 +166,12 @@
         </div>
       </div>
 
-      <!-- Fix Final Report Section - Only show after Step 5 (Fix to Start) is complete -->
-      <div v-if="fixedFile" class="fix-final-report-section">
-        <div class="section-card fix-report-card">
-          <div class="card-header">
-            <h3>🔧 Step 6: Fix Final Report Generation</h3>
-            <p>After generating the Final Report CSV, upload it here to apply ISP-specific formatting fixes</p>
-          </div>
-          
-          <div class="fix-report-content">
-            <div class="fixes-info">
-              <h4>✨ What Gets Fixed:</h4>
-              <ul>
-                <li><strong>Date Format:</strong> Airtel → DD-MMM-YYYY (e.g., 14-Nov-2024), Others → DD-MM-YYYY</li>
-                <li><strong>Time Format:</strong> Jio → HHMMSS (compact), Others → HH:MM:SS</li>
-                <li><strong>State/City:</strong> Columns swapped to correct order (State, City)</li>
-                <li><strong>ISP Names:</strong> Kept as is (no changes)</li>
-              </ul>
-            </div>
-
-            <div class="upload-section">
-              <label for="finalReportFile" class="file-label">
-                📄 Upload Final Report CSV
-              </label>
-              <input
-                id="finalReportFile"
-                ref="finalReportFileInput"
-                type="file"
-                accept=".csv"
-                @change="handleFinalReportUpload"
-                class="file-input"
-              />
-              <p v-if="selectedFinalReportFile" class="selected-file">
-                Selected: {{ selectedFinalReportFile.name }}
-              </p>
-            </div>
-
-            <button 
-              @click="fixFinalReport" 
-              :disabled="!selectedFinalReportFile || fixingFinalReport"
-              class="btn-fix-report"
-            >
-              <span v-if="fixingFinalReport">⏳ Fixing Report...</span>
-              <span v-else>🔧 Fix Final Report Generation</span>
-            </button>
-
-            <div v-if="fixedReportSuccess" class="success-message">
-              <h4>✅ Final Report Fixed Successfully!</h4>
-              <p>The corrected file has been downloaded automatically.</p>
-              <p class="info-text">
-                <strong>File name:</strong> Final_Report_CORRECTED.csv
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ISP Separation Section - Only show after Fix Final Report is complete -->
-      <div v-if="fixedReportSuccess" class="isp-separation-section">
+      <!-- ISP Separation Section - Only show after Step 5 (Fix to Start) is complete -->
+      <div v-if="fixedFile" class="isp-separation-section">
         <div class="section-card isp-card">
           <div class="card-header">
-            <h3>🏢 Step 7: ISP Separation & Analysis</h3>
-            <p>Separate the Final Report by ISP and generate comprehensive analysis reports</p>
+            <h3>🏢 Step 6: ISP Separation & Analysis</h3>
+            <p>After generating the Final Report CSV, upload it here to separate by ISP and generate comprehensive analysis</p>
           </div>
           
           <div class="card-content">
@@ -245,7 +189,7 @@
 
             <div class="file-input-group">
               <label for="isp-file-input" class="file-label">
-                📄 Select Fixed Final Report CSV:
+                📄 Select Final Report CSV:
               </label>
               <input
                 id="isp-file-input"
@@ -308,10 +252,6 @@ const mergingMaster = ref(false)
 const masterFile = ref(null)
 const fixingFile = ref(false)
 const fixedFile = ref(null)
-const selectedFinalReportFile = ref(null)
-const finalReportFileInput = ref(null)
-const fixingFinalReport = ref(false)
-const fixedReportSuccess = ref(false)
 const selectedISPFile = ref(null)
 const ispFileInput = ref(null)
 const separatingISP = ref(false)
@@ -622,82 +562,6 @@ const openFinalReportGenerator = () => {
   window.open('/final-report-generator.html', '_blank')
 }
 
-// Handle Final Report file selection
-const handleFinalReportUpload = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    if (!file.name.endsWith('.csv')) {
-      alert('Please select a CSV file')
-      return
-    }
-    selectedFinalReportFile.value = file
-    fixedReportSuccess.value = false
-    console.log('📄 Final Report file selected:', file.name)
-  }
-}
-
-// Fix Final Report with ISP-specific formatting
-const fixFinalReport = async () => {
-  if (!selectedFinalReportFile.value) {
-    alert('Please select a Final Report CSV file first')
-    return
-  }
-
-  fixingFinalReport.value = true
-  fixedReportSuccess.value = false
-
-  try {
-    console.log('🔧 Fixing Final Report...')
-    
-    const config = useRuntimeConfig()
-    const apiBase = config.public.apiBase
-    
-    // Create FormData
-    const formData = new FormData()
-    formData.append('file', selectedFinalReportFile.value)
-    
-    // Upload and fix (no authentication required)
-    const response = await fetch(`${apiBase}/api/fix-final-report`, {
-      method: 'POST',
-      body: formData
-    })
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }))
-      throw new Error(errorData.detail || `Server error: ${response.status}`)
-    }
-    
-    // Download the corrected file
-    const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'Final_Report_CORRECTED.csv'
-    document.body.appendChild(a)
-    a.click()
-    window.URL.revokeObjectURL(url)
-    document.body.removeChild(a)
-    
-    console.log('✅ Final Report fixed and downloaded successfully')
-    
-    fixedReportSuccess.value = true
-    
-    // Reset file input
-    selectedFinalReportFile.value = null
-    if (finalReportFileInput.value) {
-      finalReportFileInput.value.value = ''
-    }
-    
-    alert('✅ Final Report fixed successfully!\n\nFile downloaded: Final_Report_CORRECTED.csv\n\nThe file now has:\n- ISP-specific date formats (Airtel: DD-MMM-YYYY, Others: DD-MM-YYYY)\n- ISP-specific time formats (Jio: HHMMSS, Others: HH:MM:SS)\n- Corrected State/City column order\n- Original ISP names preserved')
-    
-  } catch (error) {
-    console.error('❌ Error fixing final report:', error)
-    alert(`Failed to fix final report: ${error.message}`)
-  } finally {
-    fixingFinalReport.value = false
-  }
-}
-
 // Handle ISP file selection
 const handleISPFileSelect = (event) => {
   const file = event.target.files[0]
@@ -715,7 +579,7 @@ const handleISPFileSelect = (event) => {
 // Separate by ISP and generate analysis
 const separateByISP = async () => {
   if (!selectedISPFile.value) {
-    alert('Please select a Fixed Final Report CSV file first')
+    alert('Please select a Final Report CSV file first')
     return
   }
 
