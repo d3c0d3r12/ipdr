@@ -13,6 +13,9 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent))
 from utils.infobyip_cookie_manager import cookie_manager
 
+router = APIRouter()
+logger = logging.getLogger(__name__)
+
 # Import auto fetcher
 try:
     from utils.auto_cookie_fetcher import auto_fetcher
@@ -20,9 +23,6 @@ try:
 except Exception as e:
     logger.warning(f"Auto cookie fetcher not available: {e}")
     AUTO_FETCH_AVAILABLE = False
-
-router = APIRouter()
-logger = logging.getLogger(__name__)
 
 
 @router.get("/status")

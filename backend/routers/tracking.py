@@ -4,17 +4,15 @@ Tracks user sessions, activities, and page views
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.orm import Session
-from sqlalchemy import func, desc, and_
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
 import uuid
 import httpx
 from user_agents import parse
 
 from core.db import get_db
-from models.user_auth import UserSession, UserActivity
+from models.user_auth import USER_SESSIONS_COLLECTION, USER_ACTIVITIES_COLLECTION
 
 router = APIRouter()
 
@@ -51,14 +49,6 @@ class ActivityCreate(BaseModel):
     error_message: Optional[str] = None
 
 
-class PageViewCreate(BaseModel):
-    session_id: str
-    page_url: str
-    page_title: Optional[str] = None
-    page_path: Optional[str] = None
-    previous_page: Optional[str] = None
-
-
 class SessionEnd(BaseModel):
     session_id: str
     exit_page: Optional[str] = None
@@ -79,7 +69,7 @@ async def get_ip_details(ip_address: str) -> dict:
                     "latitude": data.get("lat"),
                     "longitude": data.get("lon"),
                     "timezone": data.get("timezone"),
-                    "isp": data.get("isp")
+                    "isp": data.get("isp"),
                 }
     except Exception as e:
         print(f"Error fetching IP details: {e}")
@@ -96,22 +86,18 @@ def parse_user_agent(user_agent_string: str) -> dict:
         "os_version": user_agent.os.version_string,
         "device_type": "mobile" if user_agent.is_mobile else ("tablet" if user_agent.is_tablet else "desktop"),
         "device_vendor": user_agent.device.brand,
-        "device_model": user_agent.device.model
+        "device_model": user_agent.device.model,
     }
 
 
 def get_client_ip(request: Request) -> str:
     """Extract client IP address from request"""
-    # Check for forwarded IP (behind proxy/load balancer)
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
         return forwarded.split(",")[0].strip()
-    
     real_ip = request.headers.get("X-Real-IP")
     if real_ip:
         return real_ip
-    
-    # Fallback to direct client IP
     return request.client.host if request.client else "unknown"
 
 
@@ -121,179 +107,158 @@ def get_client_ip(request: Request) -> str:
 async def start_session(
     session_data: SessionCreate,
     request: Request,
-    db: Session = Depends(get_db)
+    db=Depends(get_db)
 ):
-    """
-    Start a new user session
-    Captures device, location, and browser details
-    """
+    """Start a new user session"""
     try:
-        # Generate unique session ID
         session_id = str(uuid.uuid4())
-        
-        # Get client IP
         ip_address = get_client_ip(request)
-        
-        # Get IP geolocation details
         ip_details = await get_ip_details(ip_address)
-        
-        # Parse user agent
         device_details = parse_user_agent(session_data.user_agent)
         
-        # Create session record
-        new_session = UserSession(
-            session_id=session_id,
-            username=session_data.username,
-            user_role=session_data.user_role,
-            is_authenticated=session_data.is_authenticated,
-            ip_address=ip_address,
-            user_agent=session_data.user_agent,
-            screen_resolution=session_data.screen_resolution,
-            viewport_size=session_data.viewport_size,
-            color_depth=session_data.color_depth,
-            referrer_url=session_data.referrer_url,
-            entry_page=session_data.entry_page,
-            connection_type=session_data.connection_type,
-            effective_type=session_data.effective_type,
-            cookies_enabled=session_data.cookies_enabled,
-            language=session_data.language,
-            languages=session_data.languages,
-            do_not_track=session_data.do_not_track,
+        doc = {
+            "session_id": session_id,
+            "username": session_data.username,
+            "user_role": session_data.user_role,
+            "is_authenticated": session_data.is_authenticated,
+            "ip_address": ip_address,
+            "user_agent": session_data.user_agent,
+            "screen_resolution": session_data.screen_resolution,
+            "viewport_size": session_data.viewport_size,
+            "color_depth": session_data.color_depth,
+            "referrer_url": session_data.referrer_url,
+            "entry_page": session_data.entry_page,
+            "connection_type": session_data.connection_type,
+            "effective_type": session_data.effective_type,
+            "cookies_enabled": session_data.cookies_enabled,
+            "language": session_data.language,
+            "languages": session_data.languages,
+            "do_not_track": session_data.do_not_track,
+            "session_start": datetime.now(timezone.utc),
+            "session_end": None,
+            "session_duration": None,
+            "exit_page": None,
+            "last_activity": datetime.now(timezone.utc),
+            "is_active": True,
             **ip_details,
-            **device_details
-        )
+            **device_details,
+        }
         
-        db.add(new_session)
-        db.commit()
-        db.refresh(new_session)
+        db[USER_SESSIONS_COLLECTION].insert_one(doc)
         
         return {
             "session_id": session_id,
             "ip_address": ip_address,
             "location": f"{ip_details.get('city', 'Unknown')}, {ip_details.get('country', 'Unknown')}",
-            "device": device_details.get('device_type'),
-            "browser": f"{device_details.get('browser')} {device_details.get('browser_version')}"
+            "device": device_details.get("device_type"),
+            "browser": f"{device_details.get('browser')} {device_details.get('browser_version')}",
         }
-        
     except Exception as e:
-        db.rollback()
         raise HTTPException(status_code=500, detail=f"Error starting session: {str(e)}")
 
 
 @router.post("/session/end")
 async def end_session(
     session_end: SessionEnd,
-    db: Session = Depends(get_db)
+    db=Depends(get_db)
 ):
     """End a user session and calculate duration"""
     try:
-        session = db.query(UserSession).filter(UserSession.session_id == session_end.session_id).first()
+        session = db[USER_SESSIONS_COLLECTION].find_one({"session_id": session_end.session_id})
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         
-        # Calculate session duration
-        session.session_end = datetime.utcnow()
-        if session.session_start:
-            duration = (session.session_end - session.session_start).total_seconds()
-            session.session_duration = int(duration)
+        now = datetime.now(timezone.utc)
+        duration = None
+        if session.get("session_start"):
+            duration = int((now - session["session_start"]).total_seconds())
         
-        session.exit_page = session_end.exit_page
-        
-        db.commit()
+        db[USER_SESSIONS_COLLECTION].update_one(
+            {"_id": session["_id"]},
+            {"$set": {
+                "session_end": now,
+                "session_duration": duration,
+                "exit_page": session_end.exit_page,
+            }},
+        )
         
         return {
             "message": "Session ended successfully",
-            "duration_seconds": session.session_duration
+            "duration_seconds": duration,
         }
-        
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
         raise HTTPException(status_code=500, detail=f"Error ending session: {str(e)}")
 
 
 @router.post("/activity/log")
 async def log_activity(
     activity: ActivityCreate,
-    db: Session = Depends(get_db)
+    db=Depends(get_db)
 ):
     """Log a user activity"""
     try:
-        # Update session last activity
-        session = db.query(UserSession).filter(UserSession.session_id == activity.session_id).first()
-        if session:
-            session.last_activity = datetime.utcnow()
-        
-        # Create activity record
-        new_activity = UserActivity(
-            session_id=activity.session_id,
-            activity_type=activity.activity_type,
-            activity_description=activity.activity_description,
-            page_url=activity.page_url,
-            page_title=activity.page_title,
-            action_category=activity.action_category,
-            action_data=activity.action_data,
-            load_time=activity.load_time,
-            status=activity.status,
-            error_message=activity.error_message
+        db[USER_SESSIONS_COLLECTION].update_one(
+            {"session_id": activity.session_id},
+            {"$set": {"last_activity": datetime.now(timezone.utc)}},
         )
         
-        db.add(new_activity)
-        db.commit()
+        doc = {
+            "session_id": activity.session_id,
+            "activity_type": activity.activity_type,
+            "activity_description": activity.activity_description,
+            "page_url": activity.page_url,
+            "page_title": activity.page_title,
+            "action_category": activity.action_category,
+            "action_data": activity.action_data,
+            "load_time": activity.load_time,
+            "status": activity.status,
+            "error_message": activity.error_message,
+            "timestamp": datetime.now(timezone.utc),
+        }
+        
+        db[USER_ACTIVITIES_COLLECTION].insert_one(doc)
         
         return {"message": "Activity logged successfully"}
-        
     except Exception as e:
-        db.rollback()
         raise HTTPException(status_code=500, detail=f"Error logging activity: {str(e)}")
-
-
-# Commented out - PageView model not in new schema
-# @router.post("/pageview/log")
-# async def log_pageview(
-#     pageview: PageViewCreate,
-#     db: Session = Depends(get_db)
-# ):
-#     """Log a page view"""
-#     # Use UserActivity instead for page tracking
-#     return {"message": "Use /activity/log endpoint for page tracking"}
 
 
 @router.get("/sessions/active")
 async def get_active_sessions(
-    db: Session = Depends(get_db)
+    db=Depends(get_db)
 ):
     """Get all active sessions (not ended)"""
     try:
-        # Sessions active in last 30 minutes
-        cutoff_time = datetime.utcnow() - timedelta(minutes=30)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=30)
         
-        sessions = db.query(UserSession).filter(
-            and_(
-                UserSession.session_end.is_(None),
-                UserSession.last_activity >= cutoff_time
-            )
-        ).order_by(desc(UserSession.last_activity)).all()
+        sessions = list(
+            db[USER_SESSIONS_COLLECTION]
+            .find({
+                "session_end": None,
+                "last_activity": {"$gte": cutoff_time},
+            })
+            .sort("last_activity", -1)
+        )
         
         return {
             "count": len(sessions),
             "sessions": [
                 {
-                    "session_id": s.session_id,
-                    "username": s.username,
-                    "ip_address": s.ip_address,
-                    "location": f"{s.city or 'Unknown'}, {s.country or 'Unknown'}",
-                    "device": s.device_type,
-                    "browser": s.browser,
-                    "session_start": s.session_start.isoformat() if s.session_start else None,
-                    "last_activity": s.last_activity.isoformat() if s.last_activity else None,
-                    "idle_seconds": int((datetime.utcnow() - s.last_activity).total_seconds()) if s.last_activity else None
+                    "session_id": s.get("session_id"),
+                    "username": s.get("username"),
+                    "ip_address": s.get("ip_address"),
+                    "location": f"{s.get('city', 'Unknown')}, {s.get('country', 'Unknown')}",
+                    "device": s.get("device_type"),
+                    "browser": s.get("browser"),
+                    "session_start": s["session_start"].isoformat() if s.get("session_start") else None,
+                    "last_activity": s["last_activity"].isoformat() if s.get("last_activity") else None,
+                    "idle_seconds": int((datetime.now(timezone.utc) - s["last_activity"]).total_seconds()) if s.get("last_activity") else None,
                 }
                 for s in sessions
-            ]
+            ],
         }
-        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching active sessions: {str(e)}")
 
@@ -301,64 +266,64 @@ async def get_active_sessions(
 @router.get("/sessions/stats")
 async def get_session_stats(
     days: int = 7,
-    db: Session = Depends(get_db)
+    db=Depends(get_db)
 ):
     """Get session statistics for the last N days"""
     try:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+        base_filter = {"session_start": {"$gte": cutoff_date}}
         
-        # Total sessions
-        total_sessions = db.query(func.count(UserSession.id)).filter(
-            UserSession.session_start >= cutoff_date
-        ).scalar()
+        total_sessions = db[USER_SESSIONS_COLLECTION].count_documents(base_filter)
         
-        # Unique visitors (by IP)
-        unique_visitors = db.query(func.count(func.distinct(UserSession.ip_address))).filter(
-            UserSession.session_start >= cutoff_date
-        ).scalar()
+        unique_visitors = len(
+            db[USER_SESSIONS_COLLECTION].distinct("ip_address", base_filter)
+        )
         
-        # Authenticated sessions
-        authenticated = db.query(func.count(UserSession.id)).filter(
-            and_(
-                UserSession.session_start >= cutoff_date,
-                UserSession.is_authenticated == True
-            )
-        ).scalar()
+        authenticated = db[USER_SESSIONS_COLLECTION].count_documents(
+            {**base_filter, "is_authenticated": True}
+        )
         
         # Average session duration
-        avg_duration = db.query(func.avg(UserSession.session_duration)).filter(
-            and_(
-                UserSession.session_start >= cutoff_date,
-                UserSession.session_duration.isnot(None)
-            )
-        ).scalar()
+        pipeline = [
+            {"$match": {**base_filter, "session_duration": {"$ne": None}}},
+            {"$group": {"_id": None, "avg_duration": {"$avg": "$session_duration"}}},
+        ]
+        avg_result = list(db[USER_SESSIONS_COLLECTION].aggregate(pipeline))
+        avg_duration = int(avg_result[0]["avg_duration"]) if avg_result else 0
         
         # Device breakdown
-        device_stats = db.query(
-            UserSession.device_type,
-            func.count(UserSession.id).label('count')
-        ).filter(
-            UserSession.session_start >= cutoff_date
-        ).group_by(UserSession.device_type).all()
+        device_pipeline = [
+            {"$match": base_filter},
+            {"$group": {"_id": "$device_type", "count": {"$sum": 1}}},
+        ]
+        device_stats = {
+            d["_id"]: d["count"]
+            for d in db[USER_SESSIONS_COLLECTION].aggregate(device_pipeline)
+            if d["_id"]
+        }
         
         # Top countries
-        country_stats = db.query(
-            UserSession.country,
-            func.count(UserSession.id).label('count')
-        ).filter(
-            UserSession.session_start >= cutoff_date
-        ).group_by(UserSession.country).order_by(desc('count')).limit(10).all()
+        country_pipeline = [
+            {"$match": base_filter},
+            {"$group": {"_id": "$country", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 10},
+        ]
+        country_stats = [
+            {"country": c["_id"], "count": c["count"]}
+            for c in db[USER_SESSIONS_COLLECTION].aggregate(country_pipeline)
+            if c["_id"]
+        ]
         
         return {
             "period_days": days,
-            "total_sessions": total_sessions or 0,
-            "unique_visitors": unique_visitors or 0,
-            "authenticated_sessions": authenticated or 0,
-            "avg_duration_seconds": int(avg_duration) if avg_duration else 0,
-            "device_breakdown": {d.device_type: d.count for d in device_stats if d.device_type},
-            "top_countries": [{"country": c.country, "count": c.count} for c in country_stats if c.country]
+            "total_sessions": total_sessions,
+            "unique_visitors": unique_visitors,
+            "authenticated_sessions": authenticated,
+            "avg_duration_seconds": avg_duration,
+            "device_breakdown": device_stats,
+            "top_countries": country_stats,
         }
-        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching stats: {str(e)}")
 
@@ -366,27 +331,31 @@ async def get_session_stats(
 @router.get("/activities/recent")
 async def get_recent_activities(
     limit: int = 50,
-    db: Session = Depends(get_db)
+    db=Depends(get_db)
 ):
     """Get recent user activities"""
     try:
-        activities = db.query(UserActivity).order_by(desc(UserActivity.timestamp)).limit(limit).all()
+        activities = list(
+            db[USER_ACTIVITIES_COLLECTION]
+            .find()
+            .sort("timestamp", -1)
+            .limit(limit)
+        )
         
         return {
             "count": len(activities),
             "activities": [
                 {
-                    "id": a.id,
-                    "session_id": a.session_id,
-                    "activity_type": a.activity_type,
-                    "description": a.activity_description,
-                    "page_url": a.page_url,
-                    "status": a.status,
-                    "timestamp": a.timestamp.isoformat() if a.timestamp else None
+                    "id": str(a["_id"]),
+                    "session_id": a.get("session_id"),
+                    "activity_type": a.get("activity_type"),
+                    "description": a.get("activity_description"),
+                    "page_url": a.get("page_url"),
+                    "status": a.get("status"),
+                    "timestamp": a["timestamp"].isoformat() if a.get("timestamp") else None,
                 }
                 for a in activities
-            ]
+            ],
         }
-        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching activities: {str(e)}")

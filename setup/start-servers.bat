@@ -14,9 +14,11 @@ echo           DELHI POLICE IPDR TRACKING HUB - SERVER STARTUP
 echo ============================================================================
 echo.
 
-REM Get the directory where this script is located
-set "PROJECT_DIR=%~dp0"
-cd /d "%PROJECT_DIR%"
+REM Get the directory where this script is located (setup folder)
+set "SETUP_DIR=%~dp0"
+REM Go up one level to project root
+cd /d "%SETUP_DIR%.."
+set "PROJECT_DIR=%CD%\"
 
 echo [INFO] Project Directory: %PROJECT_DIR%
 echo.
@@ -91,6 +93,23 @@ if not exist "%PROJECT_DIR%backend\main.py" (
 )
 echo [OK] Backend main.py found
 
+REM Check and install backend packages if needed
+python -c "import fastapi" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [INFO] Backend packages not installed. Installing now...
+    echo.
+    cd /d "%PROJECT_DIR%backend"
+    pip install -r requirements.txt
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install backend packages!
+        pause
+        exit /b 1
+    )
+    echo [SUCCESS] Backend packages installed!
+) else (
+    echo [OK] Backend packages installed
+)
+
 echo.
 
 REM ============================================================================
@@ -116,6 +135,22 @@ if not exist "%PROJECT_DIR%frontend\package.json" (
     exit /b 1
 )
 echo [OK] Frontend package.json found
+
+REM Check and install frontend packages if needed
+if not exist "%PROJECT_DIR%frontend\node_modules" (
+    echo [INFO] Frontend packages not installed. Installing now...
+    echo.
+    cd /d "%PROJECT_DIR%frontend"
+    npm install
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install frontend packages!
+        pause
+        exit /b 1
+    )
+    echo [SUCCESS] Frontend packages installed!
+) else (
+    echo [OK] Frontend packages installed
+)
 
 echo.
 

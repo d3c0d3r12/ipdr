@@ -4,14 +4,15 @@ Handles all FIR-related operations including storing IP lookup results
 """
 
 from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import csv
 from pathlib import Path
 
 from models.fir_case import (
-    FIRCase, FIRIPLookup, FIREvidence, FIRSuspect, FIRTimeline
+    FIR_CASES_COLLECTION, FIR_IP_LOOKUPS_COLLECTION,
+    FIR_EVIDENCE_COLLECTION, FIR_TIMELINE_COLLECTION,
+    new_fir_case, new_fir_ip_lookup, new_fir_evidence, new_fir_timeline,
 )
 
 
@@ -19,39 +20,28 @@ class FIRService:
     """Service for managing FIR cases"""
     
     @staticmethod
-    def create_fir_case(
-        db: Session,
-        fir_number: str,
-        case_title: str,
-        investigating_officer: str,
-        department: str = "Delhi Police Cyber Cell",
-        case_description: str = None,
-        priority: str = "medium",
-        created_by: str = None
-    ) -> tuple[Optional[FIRCase], str]:
+    def create_fir_case(db, fir_number, case_title, investigating_officer,
+                        department="Delhi Police Cyber Cell",
+                        case_description=None, priority="medium",
+                        created_by=None):
         """Create new FIR case"""
-        
-        # Check if FIR already exists
-        existing = db.query(FIRCase).filter(FIRCase.fir_number == fir_number).first()
+        existing = db[FIR_CASES_COLLECTION].find_one({"fir_number": fir_number})
         if existing:
             return existing, "FIR case already exists"
         
-        # Create FIR case
-        fir_case = FIRCase(
+        doc = new_fir_case(
             fir_number=fir_number,
             case_title=case_title,
             case_description=case_description,
             investigating_officer=investigating_officer,
             department=department,
             priority=priority,
-            status="active"
+            status="active",
         )
         
-        db.add(fir_case)
-        db.commit()
-        db.refresh(fir_case)
+        result = db[FIR_CASES_COLLECTION].insert_one(doc)
+        doc["_id"] = result.inserted_id
         
-        # Log timeline event
         FIRService.add_timeline_event(
             db=db,
             fir_number=fir_number,
@@ -59,31 +49,24 @@ class FIRService:
             event_title="FIR Case Created",
             event_description=f"New FIR case {fir_number} created",
             performed_by=created_by or investigating_officer,
-            importance="high"
+            importance="high",
         )
         
-        return fir_case, "FIR case created successfully"
+        return doc, "FIR case created successfully"
     
     @staticmethod
-    def get_fir_case(db: Session, fir_number: str) -> Optional[FIRCase]:
+    def get_fir_case(db, fir_number):
         """Get FIR case by number"""
-        return db.query(FIRCase).filter(FIRCase.fir_number == fir_number).first()
+        return db[FIR_CASES_COLLECTION].find_one({"fir_number": fir_number})
     
     @staticmethod
-    def store_ip_lookup_results_from_csv(
-        db: Session,
-        fir_number: str,
-        csv_file_path: str,
-        performed_by: str = None
-    ) -> tuple[int, str]:
+    def store_ip_lookup_results_from_csv(db, fir_number, csv_file_path,
+                                         performed_by=None):
         """Store IP lookup results from CSV file into database"""
-        
-        # Ensure FIR case exists
         fir_case = FIRService.get_fir_case(db, fir_number)
         if not fir_case:
             return 0, "FIR case not found"
         
-        # Read CSV file
         try:
             with open(csv_file_path, 'r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
@@ -91,22 +74,27 @@ class FIRService:
         except Exception as e:
             return 0, f"Failed to read CSV: {str(e)}"
         
-        # Store each IP lookup result
-        count = 0
+        docs = []
         for row in rows:
             try:
-                # Determine IP version
                 ip_version = "IPv6" if ':' in row.get('ip', '') else "IPv4"
-                
-                # Extract country code from country field (e.g., "India (IN)" -> "IN")
                 country = row.get('country', '')
                 country_code = None
                 if '(' in country and ')' in country:
                     country_code = country.split('(')[1].split(')')[0]
                     country = country.split('(')[0].strip()
                 
-                # Create IP lookup record
-                ip_lookup = FIRIPLookup(
+                lat = None
+                lon = None
+                try:
+                    if row.get('latitude') and row.get('latitude') != 'Unknown':
+                        lat = float(row['latitude'])
+                    if row.get('longitude') and row.get('longitude') != 'Unknown':
+                        lon = float(row['longitude'])
+                except Exception:
+                    pass
+                
+                doc = new_fir_ip_lookup(
                     fir_number=fir_number,
                     ip_address=row.get('ip'),
                     ip_version=ip_version,
@@ -119,32 +107,24 @@ class FIRService:
                     isp=row.get('isp'),
                     organization=row.get('organization'),
                     data_source="infobyip",
-                    raw_data=row  # Store complete row as JSON
+                    raw_data=row,
+                    latitude=lat,
+                    longitude=lon,
                 )
-                
-                # Try to parse latitude/longitude
-                try:
-                    if row.get('latitude') and row.get('latitude') != 'Unknown':
-                        ip_lookup.latitude = float(row.get('latitude'))
-                    if row.get('longitude') and row.get('longitude') != 'Unknown':
-                        ip_lookup.longitude = float(row.get('longitude'))
-                except:
-                    pass
-                
-                db.add(ip_lookup)
-                count += 1
-                
+                docs.append(doc)
             except Exception as e:
                 print(f"Error storing IP {row.get('ip')}: {str(e)}")
                 continue
         
-        # Update FIR case statistics
-        fir_case.total_ips = count
-        fir_case.updated_at = datetime.utcnow()
+        if docs:
+            db[FIR_IP_LOOKUPS_COLLECTION].insert_many(docs)
         
-        db.commit()
+        count = len(docs)
+        db[FIR_CASES_COLLECTION].update_one(
+            {"_id": fir_case["_id"]},
+            {"$set": {"total_ips": count, "updated_at": datetime.now(timezone.utc)}},
+        )
         
-        # Log timeline event
         FIRService.add_timeline_event(
             db=db,
             fir_number=fir_number,
@@ -153,52 +133,49 @@ class FIRService:
             event_description=f"Stored {count} IP lookup results in database",
             performed_by=performed_by,
             event_data={"total_ips": count, "source_file": csv_file_path},
-            importance="high"
+            importance="high",
         )
         
         return count, f"Successfully stored {count} IP lookup results"
     
     @staticmethod
-    def store_ip_lookup_results_from_json(
-        db: Session,
-        fir_number: str,
-        json_file_path: str,
-        performed_by: str = None
-    ) -> tuple[int, str]:
+    def store_ip_lookup_results_from_json(db, fir_number, json_file_path,
+                                          performed_by=None):
         """Store IP lookup results from JSON file into database"""
-        
-        # Ensure FIR case exists
         fir_case = FIRService.get_fir_case(db, fir_number)
         if not fir_case:
             return 0, "FIR case not found"
         
-        # Read JSON file
         try:
             with open(json_file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
         except Exception as e:
             return 0, f"Failed to read JSON: {str(e)}"
         
-        # Ensure data is a list
         if not isinstance(data, list):
             data = [data]
         
-        # Store each IP lookup result
-        count = 0
+        docs = []
         for item in data:
             try:
-                # Determine IP version
                 ip_version = "IPv6" if ':' in item.get('ip', '') else "IPv4"
-                
-                # Extract country code
                 country = item.get('country', '')
                 country_code = None
                 if '(' in country and ')' in country:
                     country_code = country.split('(')[1].split(')')[0]
                     country = country.split('(')[0].strip()
                 
-                # Create IP lookup record
-                ip_lookup = FIRIPLookup(
+                lat = None
+                lon = None
+                try:
+                    if item.get('latitude') and item.get('latitude') != 'Unknown':
+                        lat = float(item['latitude'])
+                    if item.get('longitude') and item.get('longitude') != 'Unknown':
+                        lon = float(item['longitude'])
+                except Exception:
+                    pass
+                
+                doc = new_fir_ip_lookup(
                     fir_number=fir_number,
                     ip_address=item.get('ip'),
                     ip_version=ip_version,
@@ -211,32 +188,24 @@ class FIRService:
                     isp=item.get('isp'),
                     organization=item.get('organization'),
                     data_source="infobyip",
-                    raw_data=item
+                    raw_data=item,
+                    latitude=lat,
+                    longitude=lon,
                 )
-                
-                # Parse coordinates
-                try:
-                    if item.get('latitude') and item.get('latitude') != 'Unknown':
-                        ip_lookup.latitude = float(item.get('latitude'))
-                    if item.get('longitude') and item.get('longitude') != 'Unknown':
-                        ip_lookup.longitude = float(item.get('longitude'))
-                except:
-                    pass
-                
-                db.add(ip_lookup)
-                count += 1
-                
+                docs.append(doc)
             except Exception as e:
                 print(f"Error storing IP {item.get('ip')}: {str(e)}")
                 continue
         
-        # Update FIR case statistics
-        fir_case.total_ips = count
-        fir_case.updated_at = datetime.utcnow()
+        if docs:
+            db[FIR_IP_LOOKUPS_COLLECTION].insert_many(docs)
         
-        db.commit()
+        count = len(docs)
+        db[FIR_CASES_COLLECTION].update_one(
+            {"_id": fir_case["_id"]},
+            {"$set": {"total_ips": count, "updated_at": datetime.now(timezone.utc)}},
+        )
         
-        # Log timeline event
         FIRService.add_timeline_event(
             db=db,
             fir_number=fir_number,
@@ -245,38 +214,26 @@ class FIRService:
             event_description=f"Stored {count} IP lookup results in database",
             performed_by=performed_by,
             event_data={"total_ips": count, "source_file": json_file_path},
-            importance="high"
+            importance="high",
         )
         
         return count, f"Successfully stored {count} IP lookup results"
     
     @staticmethod
-    def get_ip_lookups(
-        db: Session,
-        fir_number: str,
-        limit: int = 100,
-        offset: int = 0
-    ) -> List[FIRIPLookup]:
+    def get_ip_lookups(db, fir_number, limit=100, offset=0):
         """Get IP lookup results for a FIR"""
-        return db.query(FIRIPLookup).filter(
-            FIRIPLookup.fir_number == fir_number
-        ).offset(offset).limit(limit).all()
+        return list(
+            db[FIR_IP_LOOKUPS_COLLECTION]
+            .find({"fir_number": fir_number})
+            .skip(offset)
+            .limit(limit)
+        )
     
     @staticmethod
-    def add_evidence(
-        db: Session,
-        fir_number: str,
-        file_name: str,
-        file_path: str,
-        file_type: str,
-        file_size: int,
-        uploaded_by: str,
-        description: str = None,
-        tags: List[str] = None
-    ) -> tuple[Optional[FIREvidence], str]:
+    def add_evidence(db, fir_number, file_name, file_path, file_type,
+                     file_size, uploaded_by, description=None, tags=None):
         """Add evidence file to FIR"""
-        
-        evidence = FIREvidence(
+        doc = new_fir_evidence(
             fir_number=fir_number,
             file_name=file_name,
             file_path=file_path,
@@ -285,21 +242,16 @@ class FIRService:
             uploaded_by=uploaded_by,
             description=description,
             tags=tags,
-            processing_status="pending"
+            processing_status="pending",
+        )
+        result = db[FIR_EVIDENCE_COLLECTION].insert_one(doc)
+        doc["_id"] = result.inserted_id
+        
+        db[FIR_CASES_COLLECTION].update_one(
+            {"fir_number": fir_number},
+            {"$inc": {"total_evidence": 1}, "$set": {"updated_at": datetime.now(timezone.utc)}},
         )
         
-        db.add(evidence)
-        
-        # Update FIR statistics
-        fir_case = FIRService.get_fir_case(db, fir_number)
-        if fir_case:
-            fir_case.total_evidence += 1
-            fir_case.updated_at = datetime.utcnow()
-        
-        db.commit()
-        db.refresh(evidence)
-        
-        # Log timeline event
         FIRService.add_timeline_event(
             db=db,
             fir_number=fir_number,
@@ -307,78 +259,57 @@ class FIRService:
             event_title="Evidence Added",
             event_description=f"Added evidence file: {file_name}",
             performed_by=uploaded_by,
-            event_data={"file_name": file_name, "file_type": file_type}
+            event_data={"file_name": file_name, "file_type": file_type},
         )
         
-        return evidence, "Evidence added successfully"
+        return doc, "Evidence added successfully"
     
     @staticmethod
-    def add_timeline_event(
-        db: Session,
-        fir_number: str,
-        event_type: str,
-        event_title: str,
-        event_description: str,
-        performed_by: str,
-        event_data: Dict = None,
-        importance: str = "normal"
-    ):
+    def add_timeline_event(db, fir_number, event_type, event_title,
+                           event_description, performed_by,
+                           event_data=None, importance="normal"):
         """Add event to FIR timeline"""
-        
-        event = FIRTimeline(
+        doc = new_fir_timeline(
             fir_number=fir_number,
             event_type=event_type,
             event_title=event_title,
             event_description=event_description,
-            event_data=event_data,
             performed_by=performed_by,
-            importance=importance
+            event_data=event_data,
+            importance=importance,
         )
-        
-        db.add(event)
-        db.commit()
+        db[FIR_TIMELINE_COLLECTION].insert_one(doc)
     
     @staticmethod
-    def get_timeline(
-        db: Session,
-        fir_number: str,
-        limit: int = 50
-    ) -> List[FIRTimeline]:
+    def get_timeline(db, fir_number, limit=50):
         """Get timeline events for FIR"""
-        return db.query(FIRTimeline).filter(
-            FIRTimeline.fir_number == fir_number
-        ).order_by(FIRTimeline.event_timestamp.desc()).limit(limit).all()
+        return list(
+            db[FIR_TIMELINE_COLLECTION]
+            .find({"fir_number": fir_number})
+            .sort("event_timestamp", -1)
+            .limit(limit)
+        )
     
     @staticmethod
-    def get_fir_statistics(db: Session, fir_number: str) -> Dict[str, Any]:
+    def get_fir_statistics(db, fir_number):
         """Get comprehensive statistics for FIR"""
-        
         fir_case = FIRService.get_fir_case(db, fir_number)
         if not fir_case:
             return {}
         
-        # Get IP statistics
-        ip_count = db.query(FIRIPLookup).filter(FIRIPLookup.fir_number == fir_number).count()
-        
-        # Get unique countries
-        countries = db.query(FIRIPLookup.country).filter(
-            FIRIPLookup.fir_number == fir_number
-        ).distinct().all()
-        
-        # Get unique ISPs
-        isps = db.query(FIRIPLookup.isp).filter(
-            FIRIPLookup.fir_number == fir_number
-        ).distinct().all()
+        ip_count = db[FIR_IP_LOOKUPS_COLLECTION].count_documents({"fir_number": fir_number})
+        countries = db[FIR_IP_LOOKUPS_COLLECTION].distinct("country", {"fir_number": fir_number})
+        isps = db[FIR_IP_LOOKUPS_COLLECTION].distinct("isp", {"fir_number": fir_number})
         
         return {
             "fir_number": fir_number,
-            "status": fir_case.status,
-            "priority": fir_case.priority,
+            "status": fir_case.get("status"),
+            "priority": fir_case.get("priority"),
             "total_ips": ip_count,
             "total_countries": len(countries),
             "total_isps": len(isps),
-            "total_evidence": fir_case.total_evidence,
-            "total_suspects": fir_case.total_suspects,
-            "created_at": fir_case.created_at,
-            "updated_at": fir_case.updated_at
+            "total_evidence": fir_case.get("total_evidence", 0),
+            "total_suspects": fir_case.get("total_suspects", 0),
+            "created_at": fir_case.get("created_at"),
+            "updated_at": fir_case.get("updated_at"),
         }

@@ -1,11 +1,41 @@
 import argparse
 import csv
 import hashlib
+import ipaddress
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple
 
 from bs4 import BeautifulSoup
+
+
+def extract_ips_from_text(text: str) -> List[str]:
+	"""
+	Extract all IP addresses from text using regex (fallback method)
+	Useful when table structure is not standard
+	"""
+	# IPv4 pattern
+	ipv4_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
+	
+	# IPv6 pattern
+	ipv6_pattern = r'\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}\b'
+	
+	ips = []
+	
+	# Find IPv4
+	ipv4_matches = re.findall(ipv4_pattern, text)
+	for ip in ipv4_matches:
+		if is_valid_ip(ip):
+			ips.append(ip)
+	
+	# Find IPv6
+	ipv6_matches = re.findall(ipv6_pattern, text)
+	for ip in ipv6_matches:
+		if is_valid_ip(ip):
+			ips.append(ip)
+	
+	return list(set(ips))  # Remove duplicates
 
 
 def _log(log_path: Path, message: str) -> None:
@@ -15,37 +45,304 @@ def _log(log_path: Path, message: str) -> None:
 		f.write(f"[{ts}] {message}\n")
 
 
+def is_valid_ip(ip_str: str) -> bool:
+	"""
+	Validate if string is a valid IPv4 or IPv6 address
+	
+	Args:
+		ip_str: String to validate
+		
+	Returns:
+		True if valid IP, False otherwise
+	"""
+	if not ip_str or not isinstance(ip_str, str):
+		return False
+	
+	ip_clean = ip_str.strip()
+	
+	# IPv4 pattern: 192.168.1.1
+	ipv4_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
+	
+	# IPv6 pattern: 2001:0db8:85a3:0000:0000:8a2e:0370:7334 or compressed forms
+	ipv6_pattern = r'^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$'
+	
+	# Check IPv4
+	if re.match(ipv4_pattern, ip_clean):
+		try:
+			# Validate octets are 0-255
+			octets = ip_clean.split('.')
+			return all(0 <= int(octet) <= 255 for octet in octets)
+		except (ValueError, AttributeError):
+			return False
+	
+	# Check IPv6
+	if re.match(ipv6_pattern, ip_clean):
+		return True
+	
+	return False
+
+
+def is_public_ip(ip_str: str) -> bool:
+	"""
+	Check if an IP is globally routable (filters private, loopback, reserved, etc.)
+	"""
+	try:
+		ip_obj = ipaddress.ip_address(ip_str.strip())
+		return bool(getattr(ip_obj, "is_global", False))
+	except Exception:
+		return False
+
+
+def _detect_best_ip_column(headers: List[str], sample_rows: List[List[str]]) -> int:
+	# Prefer header names that look like an IP column
+	for i, h in enumerate(headers):
+		h_norm = (h or "").strip().lower()
+		if h_norm in {"ip", "ip_address", "ipaddress"} or "ip" == h_norm.replace(" ", "_"):
+			return i
+
+	# Otherwise score by valid IP occurrences
+	scores: dict[int, int] = {}
+	for row in sample_rows:
+		for col_idx, cell in enumerate(row):
+			if cell and is_valid_ip(cell.strip()):
+				scores[col_idx] = scores.get(col_idx, 0) + 1
+	if scores:
+		return max(scores, key=scores.get)
+	return -1
+
+
+def _detect_timestamp_column(headers: List[str]) -> int:
+	for i, h in enumerate(headers):
+		h_norm = (h or "").strip().lower()
+		if any(k in h_norm for k in ("timestamp", "time", "date", "datetime")):
+			return i
+	return 0
+
+
+def extract_rows_from_csv(csv_text: str) -> Tuple[List[Tuple[int, str, str, str]], List[Tuple[int, str, str, str, str]]]:
+	"""
+	Extract (idx, timestamp, ip, activity) rows from an IPDR CSV.
+	"""
+	data_rows: List[Tuple[int, str, str, str]] = []
+	problems: List[Tuple[int, str, str, str, str]] = []
+
+	if not csv_text.strip():
+		return data_rows, [(0, "empty_file", "", "", "")]
+
+	try:
+		sniffer = csv.Sniffer()
+		dialect = sniffer.sniff(csv_text[:4096])
+	except Exception:
+		dialect = csv.excel
+
+	reader = csv.reader(csv_text.splitlines(), dialect)
+	rows = [r for r in reader if any((c or "").strip() for c in r)]
+	if not rows:
+		return data_rows, [(0, "empty_file", "", "", "")]
+
+	headers = [c.strip() for c in rows[0]]
+	sample = rows[1: min(len(rows), 11)]
+
+	ip_col = _detect_best_ip_column(headers, sample)
+	if ip_col == -1:
+		return data_rows, [(0, "ip_column_not_found", "", "", "")]
+
+	ts_col = _detect_timestamp_column(headers)
+
+	activity_col = -1
+	for i, h in enumerate(headers):
+		h_norm = (h or "").strip().lower()
+		if any(k in h_norm for k in ("activity", "event", "type", "service", "remark", "notes")):
+			activity_col = i
+			break
+
+	for idx, row in enumerate(rows[1:], start=1):
+		ip_original = (row[ip_col].strip() if len(row) > ip_col else "")
+		timestamp_original = (row[ts_col].strip() if len(row) > ts_col else "")
+		activity = (row[activity_col].strip() if activity_col != -1 and len(row) > activity_col else "")
+
+		if not ip_original or not timestamp_original:
+			reasons = []
+			if not timestamp_original:
+				reasons.append("missing_timestamp")
+			if not ip_original:
+				reasons.append("missing_ip")
+			problems.append((idx, ",".join(reasons), timestamp_original, ip_original, activity))
+			continue
+
+		if not is_valid_ip(ip_original):
+			problems.append((idx, "invalid_ip_format", timestamp_original, ip_original, activity))
+			continue
+
+		if not is_public_ip(ip_original):
+			problems.append((idx, "non_public_ip", timestamp_original, ip_original, activity))
+			continue
+
+		data_rows.append((idx, timestamp_original, ip_original, activity))
+
+	return data_rows, problems
+
+
+def find_ip_column(table_rows: List[List[str]]) -> int:
+	"""
+	Automatically detect which column contains IP addresses
+	
+	Args:
+		table_rows: List of table rows (each row is a list of cells)
+		
+	Returns:
+		Column index with most valid IPs, or -1 if not found
+	"""
+	if not table_rows or len(table_rows) < 2:
+		return -1
+	
+	# Check first few data rows (skip header)
+	sample_rows = table_rows[1:min(6, len(table_rows))]
+	
+	# Count valid IPs in each column
+	column_scores = {}
+	
+	for row in sample_rows:
+		for col_idx, cell in enumerate(row):
+			if cell and is_valid_ip(cell):
+				column_scores[col_idx] = column_scores.get(col_idx, 0) + 1
+	
+	# Return column with most valid IPs
+	if column_scores:
+		best_column = max(column_scores, key=column_scores.get)
+		print(f"✅ Auto-detected IP column: {best_column} (found {column_scores[best_column]} valid IPs in sample)")
+		return best_column
+	
+	print("⚠️  Could not auto-detect IP column, using default column 1")
+	return -1
+
+
 def _find_table(html_text: str) -> List[List[str]]:
+	"""
+	Find and extract table data from HTML
+	
+	Searches all tables in the HTML and returns the one with the most data rows.
+	This handles cases where multiple tables exist (e.g., Google Subscriber Info)
+	"""
 	soup = BeautifulSoup(html_text, 'lxml')
-	table = soup.find('table')
-	if not table:
+	tables = soup.find_all('table')
+	
+	if not tables:
+		print("❌ No tables found in HTML")
 		return []
-	rows: List[List[str]] = []
-	for tr in table.find_all('tr'):
-		cells = [td.get_text(strip=False) for td in tr.find_all(['td', 'th'])]
-		if cells:
-			rows.append(cells)
-	return rows
+	
+	print(f"📊 Found {len(tables)} table(s) in HTML")
+	
+	# Extract rows from all tables
+	all_table_data = []
+	
+	for table_idx, table in enumerate(tables):
+		rows: List[List[str]] = []
+		for tr in table.find_all('tr'):
+			cells = [td.get_text(strip=True) for td in tr.find_all(['td', 'th'])]
+			if cells:
+				rows.append(cells)
+		
+		if rows:
+			all_table_data.append((table_idx, rows))
+			print(f"  Table {table_idx}: {len(rows)} rows, {len(rows[0]) if rows else 0} columns")
+	
+	if not all_table_data:
+		print("❌ No data found in any table")
+		return []
+	
+	# Return the table with the most rows (likely the data table)
+	best_table = max(all_table_data, key=lambda x: len(x[1]))
+	print(f"✅ Using Table {best_table[0]} with {len(best_table[1])} rows")
+	
+	return best_table[1]
 
 
 def _extract_rows(table_rows: List[List[str]]) -> Tuple[List[Tuple[int, str, str, str]], List[Tuple[int, str, str, str, str]]]:
+	"""
+	Extract rows with automatic IP column detection and validation
+	
+	Args:
+		table_rows: List of table rows from HTML
+		
+	Returns:
+		Tuple of (data_rows, problem_rows)
+		- data_rows: List of (idx, timestamp, ip, activity)
+		- problem_rows: List of (idx, reason, timestamp, ip, activity)
+	"""
 	data_rows: List[Tuple[int, str, str, str]] = []
 	problems: List[Tuple[int, str, str, str, str]] = []
+	
 	if not table_rows:
+		print("❌ No table rows provided")
 		return data_rows, problems
-	# assume first row is header if it has th or looks like header; still skip index 0
+	
+	print(f"📋 Processing {len(table_rows)} rows from table")
+	
+	# Show first row (header) for debugging
+	if table_rows:
+		print(f"📌 Header row: {table_rows[0]}")
+	
+	# Auto-detect IP column
+	ip_column = find_ip_column(table_rows)
+	
+	# Fallback to column 1 if auto-detection fails
+	if ip_column == -1:
+		print("⚠️  Using fallback: IP column = 1")
+		ip_column = 1
+	
+	# Determine other columns based on IP column position
+	# Common patterns:
+	# Pattern 1: [Timestamp, IP, Activity] - IP at column 1
+	# Pattern 2: [Index, Timestamp, IP, Activity] - IP at column 2
+	# Pattern 3: [Timestamp, Activity, IP] - IP at column 2
+	
+	timestamp_column = 0  # Usually first column
+	activity_column = ip_column + 1 if ip_column < 2 else ip_column - 1
+	
+	print(f"📊 Column mapping: Timestamp={timestamp_column}, IP={ip_column}, Activity={activity_column}")
+	
+	# Extract rows (skip header row)
 	for idx, cells in enumerate(table_rows[1:], start=1):
-		timestamp_original = cells[0] if len(cells) > 0 else ''
-		ip_original = cells[1] if len(cells) > 1 else ''
-		activity = cells[2] if len(cells) > 2 else ''
-		data_rows.append((idx, timestamp_original, ip_original, activity))
+		# Extract fields based on detected columns
+		timestamp_original = cells[timestamp_column].strip() if len(cells) > timestamp_column else ''
+		ip_original = cells[ip_column].strip() if len(cells) > ip_column else ''
+		activity = cells[activity_column].strip() if len(cells) > activity_column else ''
+		
+		# Validate IP format
+		if ip_original and not is_valid_ip(ip_original):
+			problems.append((
+				idx,
+				'invalid_ip_format',
+				timestamp_original,
+				ip_original,
+				activity
+			))
+			print(f"⚠️  Row {idx}: Invalid IP format: '{ip_original}'")
+			continue
+		
+		# Check for missing required fields
 		if not timestamp_original or not ip_original:
 			reason_parts = []
 			if not timestamp_original:
 				reason_parts.append('missing_timestamp')
 			if not ip_original:
 				reason_parts.append('missing_ip')
-			problems.append((idx, ','.join(reason_parts), timestamp_original, ip_original, activity))
+			problems.append((
+				idx,
+				','.join(reason_parts),
+				timestamp_original,
+				ip_original,
+				activity
+			))
+			print(f"⚠️  Row {idx}: {','.join(reason_parts)}")
+			continue
+		
+		# Add valid row
+		data_rows.append((idx, timestamp_original, ip_original, activity))
+	
+	print(f"✅ Extracted {len(data_rows)} valid rows, {len(problems)} problem rows")
+	
 	return data_rows, problems
 
 

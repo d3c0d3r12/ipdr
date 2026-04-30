@@ -5,9 +5,9 @@ Handles unlimited IP lookups with Cloudflare bypass and real-time progress strea
 
 from fastapi import APIRouter, HTTPException, Query, Form, Depends, File, UploadFile
 from fastapi.responses import StreamingResponse, FileResponse
-from sqlalchemy.orm import Session
+
 from core.db import get_db
-from models.user_auth import User
+
 from routers.auth_secure import get_current_user
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -34,6 +34,8 @@ except:
 from utils.infobyip_direct import InfoByIPDirect
 from utils.multi_source_ip_lookup import MultiSourceIPLookup
 from utils.infobyip_cookie_manager import cookie_manager
+from utils.progress_manager import ProgressManager
+from utils.background_task_manager import task_manager
 
 router = APIRouter()
 
@@ -294,6 +296,25 @@ async def progress_generator(run_dir: Path, csv_path: Path):
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
 
+@router.get("/lookup/single")
+async def lookup_single_ip(
+    ip: str = Query(..., description="IP address to look up"),
+    current_user=Depends(get_current_user),
+):
+    """Look up a single IP address and return its info."""
+    ip = sanitize_input(ip.strip())
+    if not ip:
+        raise HTTPException(status_code=400, detail="IP address is required")
+
+    multi_lookup = MultiSourceIPLookup()
+    try:
+        result = multi_lookup.lookup_with_fallback(ip)
+    finally:
+        multi_lookup.close()
+
+    return {"success": True, "data": result}
+
+
 @router.get("/lookup/stream")
 async def stream_ip_lookup(run_dir: str = Query(..., description="Path to the processed run directory")):
     """
@@ -380,7 +401,7 @@ async def get_lookup_status(run_dir: str = Query(...)):
         run_dir: Path to the processed directory
     
     Returns:
-        Status of IP lookup results
+        Status of IP lookup results and all processed files
     """
     run_path = Path(run_dir)
     
@@ -390,6 +411,8 @@ async def get_lookup_status(run_dir: str = Query(...)):
     csv_results = run_path / 'ip_lookup_results.csv'
     json_results = run_path / 'ip_lookup_results.json'
     original_csv = run_path / 'original_log.csv'
+    master_file = run_path / 'Master file.csv'
+    fixed_file = run_path / 'fully_fixed.csv'
     
     # Count IPs in original file
     total_ips = 0
@@ -402,6 +425,21 @@ async def get_lookup_status(run_dir: str = Query(...)):
         with open(csv_results, 'r', encoding='utf-8') as f:
             results_count = sum(1 for _ in csv.DictReader(f))
     
+    # Count master file records
+    master_records = 0
+    master_columns = []
+    if master_file.exists():
+        with open(master_file, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            master_columns = reader.fieldnames or []
+            master_records = sum(1 for _ in reader)
+    
+    # Count fixed file records
+    fixed_records = 0
+    if fixed_file.exists():
+        with open(fixed_file, 'r', encoding='utf-8') as f:
+            fixed_records = sum(1 for _ in f)
+    
     return {
         "has_results": csv_results.exists() and json_results.exists(),
         "csv_exists": csv_results.exists(),
@@ -410,15 +448,24 @@ async def get_lookup_status(run_dir: str = Query(...)):
         "results_count": results_count,
         "success_rate": round((results_count / total_ips * 100), 1) if total_ips > 0 else 0,
         "csv_path": str(csv_results) if csv_results.exists() else None,
-        "json_path": str(json_results) if json_results.exists() else None
+        "json_path": str(json_results) if json_results.exists() else None,
+        # Master file info
+        "has_master_file": master_file.exists(),
+        "master_file_path": str(master_file) if master_file.exists() else None,
+        "master_records": master_records,
+        "master_columns": master_columns,
+        # Fixed file info
+        "has_fixed_file": fixed_file.exists(),
+        "fixed_file_path": str(fixed_file) if fixed_file.exists() else None,
+        "fixed_records": fixed_records
     }
 
 
 @router.post("/merge-master-file")
 async def merge_master_file(
     run_dir: str = Form(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_db)
 ):
     """
     Merge original_log.csv with ip_lookup_results.csv to create Master file.csv
@@ -514,8 +561,8 @@ async def merge_master_file(
 @router.post("/fix-to-start")
 async def fix_to_start(
     run_dir: str = Form(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_db)
 ):
     """
     Remove header row from Master file.csv and create fully_fixed.csv
@@ -993,3 +1040,434 @@ async def download_file(run_dir: str, filename: str):
             "Content-Disposition": f'attachment; filename="{filename}"'
         }
     )
+
+
+@router.post("/generate-isp-letters")
+async def generate_isp_letters(
+    zip_file: UploadFile = File(...),
+    fir_number: str = Form(...),
+    fir_date: str = Form(...),
+    police_station: str = Form(...),
+    sections: str = Form(...),
+    subject: str = Form(...),
+    email_reference: str = Form(...),
+    body_description: str = Form(...),
+    complainant: str = Form(...),
+    officer_name: str = Form(...),
+    officer_designation: str = Form(...),
+    officer_location: str = Form(...),
+    officer_contact: str = Form(...),
+    letter_date: str = Form(...)
+):
+    """
+    Generate ISP letters from ZIP file (Step 7)
+    
+    Upload ZIP from Step 6 (ISP Separation), auto-detect ISPs,
+    and generate official letters using pre-defined templates
+    """
+    try:
+        logger.info(f"📝 Generating ISP letters for FIR: {fir_number}")
+        
+        # Import letter generator
+        from utils.isp_letter_generator import ISPLetterGenerator
+        
+        # Save uploaded ZIP temporarily
+        temp_zip_path = Path(__file__).parent.parent / "temp" / f"isp_zip_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+        temp_zip_path.parent.mkdir(exist_ok=True)
+        
+        with open(temp_zip_path, "wb") as f:
+            content = await zip_file.read()
+            f.write(content)
+        
+        logger.info(f"✅ ZIP file saved: {temp_zip_path}")
+        
+        # Prepare case details
+        case_details = {
+            'fir_number': fir_number,
+            'fir_date': fir_date,
+            'police_station': police_station,
+            'sections': sections,
+            'subject': subject,
+            'email_reference': email_reference,
+            'body_description': body_description,
+            'complainant': complainant,
+            'officer_name': officer_name,
+            'officer_designation': officer_designation,
+            'officer_location': officer_location,
+            'officer_contact': officer_contact,
+            'letter_date': letter_date
+        }
+        
+        # Generate letters
+        generator = ISPLetterGenerator()
+        letters_zip = generator.generate_all_letters(str(temp_zip_path), case_details)
+        
+        logger.info(f"✅ ISP letters generated successfully")
+        
+        # Clean up temp file
+        temp_zip_path.unlink()
+        
+        # Return ZIP file with all letters
+        return StreamingResponse(
+            iter([letters_zip]),
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="ISP_Letters_{fir_number.replace("/", "-")}.zip"'
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Error generating ISP letters: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating ISP letters: {str(e)}")
+
+
+@router.post("/detect-isps-from-zip")
+async def detect_isps_from_zip(
+    zip_file: UploadFile = File(...)
+):
+    """
+    Detect ISPs from uploaded ZIP file (preview before generating letters)
+    
+    Returns list of ISPs with IP counts
+    """
+    try:
+        logger.info(f"🔍 Detecting ISPs from ZIP file")
+        
+        # Import letter generator
+        from utils.isp_letter_generator import ISPLetterGenerator
+        
+        # Save uploaded ZIP temporarily
+        temp_zip_path = Path(__file__).parent.parent / "temp" / f"detect_zip_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+        temp_zip_path.parent.mkdir(exist_ok=True)
+        
+        with open(temp_zip_path, "wb") as f:
+            content = await zip_file.read()
+            f.write(content)
+        
+        # Detect ISPs
+        generator = ISPLetterGenerator()
+        isp_data = generator.detect_isps_from_zip(str(temp_zip_path))
+        
+        # Build response
+        detected_isps = []
+        for isp_name, ip_df in isp_data.items():
+            template_type = generator.get_template_type(isp_name)
+            detected_isps.append({
+                'isp_name': isp_name,
+                'ip_count': len(ip_df),
+                'template_type': template_type,
+                'has_custom_template': template_type in ['airtel', 'jio', 'vi']
+            })
+        
+        logger.info(f"✅ Detected {len(detected_isps)} ISPs")
+        
+        # Clean up temp file
+        temp_zip_path.unlink()
+        
+        return {
+            "success": True,
+            "isps": detected_isps,
+            "total_isps": len(detected_isps)
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Error detecting ISPs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error detecting ISPs: {str(e)}")
+
+
+# ============================================================================
+# BACKGROUND PROCESSING & RESUME ENDPOINTS
+# ============================================================================
+
+@router.post("/lookup/start-background")
+async def start_background_lookup(run_dir: str = Query(..., description="Path to the processed run directory")):
+    """
+    Start IP lookup in background (survives browser close, screen off)
+    
+    This endpoint:
+    1. Creates a background task that runs on the server
+    2. Returns immediately with a task_id
+    3. Investigation continues even if browser closes
+    4. Can check progress using /lookup/progress/{task_id}
+    5. Auto-saves progress after each IP
+    6. Can resume if interrupted
+    
+    Args:
+        run_dir: Path to the processed directory
+        
+    Returns:
+        task_id and status information
+    """
+    try:
+        run_path = Path(run_dir)
+        
+        if not run_path.exists():
+            raise HTTPException(status_code=404, detail=f"Run directory not found: {run_dir}")
+        
+        csv_path = run_path / 'original_log.csv'
+        if not csv_path.exists():
+            raise HTTPException(status_code=404, detail=f"original_log.csv not found in {run_dir}")
+        
+        # Initialize progress manager
+        progress_mgr = ProgressManager(run_path)
+        
+        # Check if can resume
+        can_resume = progress_mgr.can_resume()
+        
+        if can_resume:
+            # Get remaining IPs
+            all_ips = extract_ips_from_csv(csv_path)
+            ips_to_process = progress_mgr.get_remaining_ips(all_ips)
+            logger.info(f"Resuming: {len(ips_to_process)} IPs remaining")
+        else:
+            # Start fresh
+            ips_to_process = extract_ips_from_csv(csv_path)
+            progress_mgr.save_progress(0, len(ips_to_process))
+            logger.info(f"Starting fresh: {len(ips_to_process)} IPs")
+        
+        # Create background task
+        task_id = task_manager.create_task(run_path, ips_to_process, resume=can_resume)
+        
+        # Start processing in background
+        asyncio.create_task(process_ips_background(task_id, run_path, ips_to_process))
+        
+        return {
+            "success": True,
+            "task_id": task_id,
+            "total_ips": len(ips_to_process),
+            "status": "started",
+            "resume": can_resume,
+            "message": "Investigation started in background. You can close browser safely.",
+            "note": "Use /lookup/progress/{task_id} to check progress"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error starting background lookup: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/lookup/progress/{task_id}")
+async def get_lookup_progress(task_id: str):
+    """
+    Get progress of background IP lookup task
+    
+    Args:
+        task_id: Task identifier from start-background endpoint
+        
+    Returns:
+        Progress information
+    """
+    task = task_manager.get_task(task_id)
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Get detailed progress from file if available
+    run_dir = Path(task['run_dir'])
+    progress_mgr = ProgressManager(run_dir)
+    file_progress = progress_mgr.load_progress()
+    
+    return {
+        "task_id": task_id,
+        "status": task['status'],
+        "total_ips": task['total_ips'],
+        "completed_ips": file_progress.get('completed', task['completed_ips']),
+        "progress": file_progress.get('percentage', task['progress']),
+        "current_ip": file_progress.get('current_ip'),
+        "created_at": task['created_at'],
+        "started_at": task.get('started_at'),
+        "completed_at": task.get('completed_at'),
+        "error": task.get('error'),
+        "can_resume": progress_mgr.can_resume()
+    }
+
+
+@router.post("/lookup/resume")
+async def resume_lookup(run_dir: str = Query(..., description="Path to the processed run directory")):
+    """
+    Resume interrupted IP lookup investigation
+    
+    This endpoint:
+    1. Checks for saved progress
+    2. Identifies remaining IPs
+    3. Continues from where it left off
+    4. No duplicate work
+    
+    Args:
+        run_dir: Path to the processed directory
+        
+    Returns:
+        task_id and resume information
+    """
+    try:
+        run_path = Path(run_dir)
+        
+        if not run_path.exists():
+            raise HTTPException(status_code=404, detail=f"Run directory not found: {run_dir}")
+        
+        # Initialize progress manager
+        progress_mgr = ProgressManager(run_path)
+        
+        # Check if can resume
+        if not progress_mgr.can_resume():
+            summary = progress_mgr.get_summary()
+            if summary['status'] == 'completed':
+                return {
+                    "success": False,
+                    "message": "Investigation already completed",
+                    "summary": summary
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "No progress to resume. Start a new investigation.",
+                    "summary": summary
+                }
+        
+        # Get remaining IPs
+        csv_path = run_path / 'original_log.csv'
+        all_ips = extract_ips_from_csv(csv_path)
+        remaining_ips = progress_mgr.get_remaining_ips(all_ips)
+        
+        # Create background task
+        task_id = task_manager.create_task(run_path, remaining_ips, resume=True)
+        
+        # Start processing in background
+        asyncio.create_task(process_ips_background(task_id, run_path, remaining_ips))
+        
+        return {
+            "success": True,
+            "task_id": task_id,
+            "total_ips": len(all_ips),
+            "completed_ips": len(all_ips) - len(remaining_ips),
+            "remaining_ips": len(remaining_ips),
+            "status": "resumed",
+            "message": f"Resumed investigation. Processing {len(remaining_ips)} remaining IPs."
+        }
+        
+    except Exception as e:
+        logger.error(f"Error resuming lookup: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/lookup/check-resume")
+async def check_can_resume(run_dir: str = Query(...)):
+    """
+    Check if investigation can be resumed
+    
+    Args:
+        run_dir: Path to the processed directory
+        
+    Returns:
+        Resume status and summary
+    """
+    try:
+        run_path = Path(run_dir)
+        
+        if not run_path.exists():
+            return {
+                "can_resume": False,
+                "message": "Run directory not found"
+            }
+        
+        progress_mgr = ProgressManager(run_path)
+        summary = progress_mgr.get_summary()
+        
+        return {
+            "can_resume": progress_mgr.can_resume(),
+            "summary": summary
+        }
+        
+    except Exception as e:
+        logger.error(f"Error checking resume: {e}")
+        return {
+            "can_resume": False,
+            "error": str(e)
+        }
+
+
+async def process_ips_background(task_id: str, run_dir: Path, ips: List[str]):
+    """
+    Process IPs in background with auto-save and resume capability
+    
+    Args:
+        task_id: Task identifier
+        run_dir: Run directory path
+        ips: List of IPs to process
+    """
+    try:
+        # Mark task as started
+        task_manager.mark_started(task_id)
+        
+        # Initialize managers
+        progress_mgr = ProgressManager(run_dir)
+        
+        # Get already completed count
+        all_ips_path = run_dir / 'original_log.csv'
+        all_ips = extract_ips_from_csv(all_ips_path)
+        already_completed = len(all_ips) - len(ips)
+        
+        # Initialize bypass
+        bypass = EnhancedCloudflareBypass(headless=True, verbose=False)
+        multi_lookup = MultiSourceIPLookup()
+        
+        logger.info(f"Starting background processing: {len(ips)} IPs")
+        
+        # Process each IP
+        for idx, ip in enumerate(ips):
+            current_count = already_completed + idx + 1
+            
+            try:
+                # Update progress
+                progress_mgr.save_progress(current_count, len(all_ips), ip)
+                task_manager.update_progress(task_id, current_count)
+                
+                # Lookup IP
+                result = bypass.lookup_ip(ip)
+                
+                # Fallback if needed
+                if result.get('error'):
+                    result = multi_lookup.lookup_with_fallback(ip, result)
+                
+                # Save result immediately
+                progress_mgr.save_result(result)
+                
+                logger.info(f"✅ [{current_count}/{len(all_ips)}] {ip} → {result.get('city', 'Unknown')}, {result.get('country', 'Unknown')}")
+                
+            except Exception as e:
+                logger.error(f"❌ Error processing {ip}: {e}")
+                # Save error result
+                error_result = {
+                    'ip': ip,
+                    'country': 'Unknown',
+                    'city': 'Unknown',
+                    'region': 'Unknown',
+                    'isp': 'Unknown',
+                    'organization': 'Unknown',
+                    'latitude': 'Unknown',
+                    'longitude': 'Unknown',
+                    'timezone': 'Unknown',
+                    'postal_code': 'Unknown',
+                    'source': 'error',
+                    'error': str(e)
+                }
+                progress_mgr.save_result(error_result)
+            
+            # Small delay
+            await asyncio.sleep(0.1)
+        
+        # Mark complete
+        progress_mgr.mark_complete()
+        task_manager.mark_completed(task_id)
+        
+        # Close bypass
+        try:
+            bypass.close()
+        except:
+            pass
+        
+        logger.info(f"✅ Background processing completed: {task_id}")
+        
+    except Exception as e:
+        logger.error(f"❌ Background processing failed: {e}")
+        task_manager.mark_failed(task_id, str(e))

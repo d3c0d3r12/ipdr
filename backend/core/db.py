@@ -1,64 +1,46 @@
-from sqlalchemy import create_engine, MetaData, text
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from core.config import DATABASE_URL, ENVIRONMENT
+"""
+Sync MongoDB connection using PyMongo
+Replaces the previous SQLAlchemy sync engine
+"""
+import os
 import logging
+from pymongo import MongoClient
+from pymongo.database import Database
 
 logger = logging.getLogger(__name__)
 
-# Create metadata
-metadata = MetaData()
+MONGODB_URL = os.getenv("MONGODB_URL", os.getenv("DATABASE_URL", "mongodb://localhost:27017"))
+MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "ipdr_tracking")
 
-# Create engine with Neon-optimized settings
-engine = create_engine(
-    DATABASE_URL,
-    # Connection pool settings (optimized for Neon)
-    pool_size=5,                    # Neon handles pooling well
-    max_overflow=10,                # Allow some overflow
-    pool_timeout=30,                # 30 second timeout
-    pool_recycle=3600,              # Recycle connections after 1 hour
-    pool_pre_ping=True,             # Verify connections before use
-    
-    # Connection arguments
-    connect_args={
-        "sslmode": "require",       # SSL required for Neon
-        "connect_timeout": 10,      # 10 second connection timeout
-        "application_name": "police-intel-backend",
-        "options": "-c timezone=Asia/Kolkata"  # Set timezone
-    },
-    
-    # Echo SQL queries in development
-    echo=(ENVIRONMENT == "development")
-)
+# Lazy-init to avoid blocking DNS SRV resolution at import time
+_client: MongoClient | None = None
+sync_db: Database | None = None
 
-# Create session factory
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Base class for models
-Base = declarative_base(metadata=metadata)
+def _ensure_client():
+    global _client, sync_db
+    if _client is None:
+        _client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=30000)
+        sync_db = _client[MONGODB_DB_NAME]
 
-# Dependency for FastAPI
-def get_db():
-    """Database session dependency for FastAPI"""
-    db = SessionLocal()
+
+def get_db() -> Database:
+    """FastAPI dependency that provides a sync PyMongo database handle."""
+    _ensure_client()
+    return sync_db
+
+
+def test_connection() -> bool:
+    """Test MongoDB connection."""
     try:
-        yield db
-    finally:
-        db.close()
-
-# Test connection function
-def test_connection():
-    """Test database connection"""
-    try:
-        with engine.connect() as conn:
-            result = conn.execute(text("SELECT version();"))
-            version = result.fetchone()[0]
-            logger.info(f"✅ Connected to Neon PostgreSQL: {version[:80]}...")
-            return True
+        _ensure_client()
+        info = _client.server_info()
+        logger.info(f"✅ Connected to MongoDB {info.get('version', 'unknown')}")
+        return True
     except Exception as e:
-        logger.error(f"❌ Database connection failed: {e}")
+        logger.error(f"❌ MongoDB connection failed: {e}")
         return False
 
-# Initialize connection on import (optional)
+
 if __name__ == "__main__":
     test_connection()

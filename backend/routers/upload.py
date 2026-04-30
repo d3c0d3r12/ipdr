@@ -1,12 +1,14 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, BackgroundTasks, Depends
 from datetime import datetime
 from pathlib import Path
-from core.config import UPLOAD_DIR, PROCESSED_DIR
-from utils.extract_html import _find_table, _extract_rows, write_original_csv, create_batches
+from core.config import UPLOAD_DIR, PROCESSED_DIR, MAX_UPLOAD_SIZE
+from utils.extract_html import _find_table, _extract_rows, write_original_csv, create_batches, extract_ips_from_text, extract_rows_from_csv, is_public_ip
 from utils.csv_cleaner import _clean_one, build_lookup
 from utils.merge_data import merge_all
 from utils.advanced_infobyip import auto_fetch_batches_advanced  # Advanced anti-detection for InfoByIP
 from utils.security import sanitize_filename, validate_fir_number, sanitize_input
+from routers.auth_secure import get_current_user
+
 import shutil
 import os
 import time
@@ -63,7 +65,8 @@ async def upload_file(
 	file: UploadFile = File(...),
 	fir: str = Form("UNKNOWN"),
 	preserve_duplicates: bool = Form(False),
-	bypass_cloudflare: bool = Form(False)
+	bypass_cloudflare: bool = Form(False),
+	_user: dict = Depends(get_current_user)
 ):
 	"""
 	Upload HTML file and extract IP activity
@@ -84,23 +87,19 @@ async def upload_file(
 	logger.info(f"📁 Original filename: {file.filename}, Sanitized: {safe_filename}")
 	
 	# Security: Validate file extension
-	if not safe_filename.lower().endswith(('.html', '.htm')):
-		raise HTTPException(status_code=400, detail="Only HTML files allowed")
+	if not safe_filename.lower().endswith(('.html', '.htm', '.csv')):
+		raise HTTPException(status_code=400, detail="Only HTML or CSV files allowed")
 	
-	# Security: Validate file size (max 50MB)
-	MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+	# Security: Validate file size
 	file_content = await file.read()
-	if len(file_content) > MAX_FILE_SIZE:
-		raise HTTPException(status_code=400, detail=f"File too large. Maximum size: 50MB")
+	if len(file_content) > MAX_UPLOAD_SIZE:
+		raise HTTPException(status_code=400, detail=f"File too large. Maximum size: {MAX_UPLOAD_SIZE // (1024 * 1024)}MB")
 	
 	# Security: Validate and sanitize FIR number
 	fir = sanitize_input(fir, max_length=64)
 	if not validate_fir_number(fir):
 		logger.warning(f"🚨 Invalid FIR number: {fir}")
 		raise HTTPException(status_code=400, detail="Invalid FIR number format. Use alphanumeric, dash, underscore only")
-	
-	# Decode HTML
-	html_text = file_content.decode('utf-8', errors='replace')
 	
 	# Create run directory
 	ts = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
@@ -113,13 +112,70 @@ async def upload_file(
 	# Save HTML snapshot to run directory with sanitized filename
 	(run_dir / safe_filename).write_bytes(file_content)
 	
-	# Extract IP activity
-	table_rows = _find_table(html_text)
-	rows, problems = _extract_rows(table_rows)
-	if not rows:
-		raise HTTPException(status_code=400, detail="No IP ACTIVITY rows found")
+	rows = []
+	problems = []
+	if safe_filename.lower().endswith(('.html', '.htm')):
+		# Decode HTML
+		html_text = file_content.decode('utf-8', errors='replace')
+
+		# Extract IP activity
+		logger.info("🔍 Starting IP extraction from HTML...")
+		table_rows = _find_table(html_text)
+		rows, problems = _extract_rows(table_rows)
+
+		# If no rows found, try fallback extraction
+		if not rows:
+			logger.warning("⚠️  No rows found in table structure, trying fallback extraction...")
+
+			# Try to extract IPs directly from HTML text
+			ips_found = extract_ips_from_text(html_text)
+
+			if ips_found:
+				logger.info(f"✅ Fallback: Found {len(ips_found)} IPs in HTML")
+
+				# Create synthetic rows with current timestamp
+				current_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+				rows = [(idx, current_time, ip, 'Extracted from HTML') for idx, ip in enumerate(ips_found, start=1)]
+
+				logger.info(f"✅ Created {len(rows)} synthetic rows from extracted IPs")
+			else:
+				# Save debug info
+				debug_file = run_dir / 'debug_html_structure.txt'
+				debug_file.write_text(
+					f"HTML Length: {len(html_text)} characters\n"
+					f"Tables Found: {len(table_rows)} rows\n"
+					f"First 1000 chars:\n{html_text[:1000]}\n",
+					encoding='utf-8'
+				)
+
+				logger.error(f"❌ No IP data found. Debug info saved to: {debug_file}")
+				raise HTTPException(
+					status_code=400,
+					detail=f"No IP ACTIVITY rows found. Please check if the HTML file contains IP addresses. Debug info saved to {debug_file.name}"
+				)
+	else:
+		csv_text = file_content.decode('utf-8', errors='replace')
+		rows, problems = extract_rows_from_csv(csv_text)
+
+	# Filter non-public IPs from HTML extractions too (authenticity check)
+	if rows:
+		public_rows = []
+		for r in rows:
+			if is_public_ip(r[2]):
+				public_rows.append(r)
+			else:
+				problems.append((r[0], "non_public_ip", r[1], r[2], r[3]))
+		rows = public_rows
+		if not rows:
+			raise HTTPException(status_code=400, detail="No public (globally routable) IPs found in the file")
 	
 	original_csv = write_original_csv(run_dir, rows)
+	problems_csv = None
+	try:
+		from utils.extract_html import write_problems_csv
+		problems_csv = write_problems_csv(run_dir, problems)
+	except Exception:
+		problems_csv = None
 	ips = [row[2] for row in rows]  # row format: (idx, timestamp, ip, activity)
 	
 	# Create batches with duplicate handling option
@@ -138,14 +194,17 @@ async def upload_file(
 		encoding='utf-8'
 	)
 	
-	# Kick off background processing
-	background.add_task(_auto_process, run_dir)
+	# Optional: legacy InfoByIP scraping pipeline
+	if bypass_cloudflare:
+		background.add_task(_auto_process, run_dir)
 	
 	return {
 		"status": "uploaded",
 		"filename": file.filename,
 		"run_dir": str(run_dir),
 		"original_csv": str(original_csv),
+		"problems_csv": str(problems_csv) if problems_csv else None,
+		"problem_rows": len(problems),
 		"batches": [str(p) for p in batches],
 		"count_rows": len(rows),
 		"unique_ips": len(set(ips)),

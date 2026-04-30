@@ -266,10 +266,14 @@ class CloudflareBypass:
             self.driver.add_cookie({'name': name, 'value': value})
     
     def screenshot(self, filename: str = "screenshot.png"):
-        """Take a screenshot for debugging"""
+        """Take a screenshot for debugging (safe - handles crashed browser)"""
         if self.driver:
-            self.driver.save_screenshot(filename)
-            logger.info(f"Screenshot saved: {filename}")
+            try:
+                self.driver.save_screenshot(filename)
+                logger.info(f"Screenshot saved: {filename}")
+            except Exception as e:
+                logger.warning(f"Screenshot failed (browser may have crashed): {e}")
+                pass
     
     def close(self):
         """Close the browser"""

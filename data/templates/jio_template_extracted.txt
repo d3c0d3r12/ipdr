@@ -1,0 +1,51 @@
+================================================================================
+FILE: c:\Users\saheb\Downloads\New FIR\supertraders Relaince Jio Letter.docx
+================================================================================
+
+Seeking data under the statutory provisions contained in Section 94 of the Bharatiya Nagarik Suraksha Sanhita, 2023 or Section 5(2) of the Indian Telegraph Act, 1885 read with Rule 419A of the Indian Telegraph (Amendment) Rules, 2007.
+OFFICE OF THE CYBER CRIME UNIT, IFSO, SPECIAL CELL, DELHI POLICE, 
+SEC - 16C, DWARKA, NEW DELHI - 110078
+Contact No. 011-20892632, E-Mail ID : acp-cybercell1@delhipolice.gov.in
+Notice u/s 94 BNSS 2023
+To,
+     	     The Nodal Officer
+        	     JIO
+Subject:- Reg provide information in case the case FIR No. 538/24, PS Special Cell (supertraders306@gmail.com)- JIO
+Sir,
+                            It is submitted that a case FIR No. 538/24, u/s 319/318/61(2) BNS, dated 27.11.2024, PS Special Cell, Delhi has been registered at PS Special Cell and investigating at IFSO/Special Cell, Sec 16C, Dwarka, New Delhi regarding fraud/cheating/Criminal Intimidation by unknown scammers. During investigation the following IP details/numbers have emerged as suspect. 
+You are hereby requested to provide the following information/documents: - 
+1. Details of the user (Name, Address, Contact No. etc.) to whom below IP’s were allotted at the mentioned Date & time against each.
+2. Kindly provide the ownership of the users, to whom IP was allotted.
+3. Kindly preserve the record till further directions.  
+4. Kindly provide any other useful details. 
+The above-mentioned information is urgent and a prompt reply is anticipated. 
+
+Inspector Vikram Singh 
+IFSO, Special Cell
+Sec. 16C, Dwarka, New Delhi
+Contact No.: 9650486980
+Dated: 31.10.2025
+
+
+--- TABLES ---
+
+Table 1:
+Type | Search Value | From Date | From Time | To Date | To Time
+IPV6 | 2409:40c4:9:d517:8000:: | 20240704 | 162108 | 20240704 | 163108
+IPV6 | 2409:40c4:9:d517:8000:: | 20240704 | 162059 | 20240704 | 163059
+IPV6 | 2409:40c4:9:d517:8000:: | 20240704 | 162057 | 20240704 | 163057
+IPV6 | 2409:40c4:302d:815b:8000:: | 20240626 | 144927 | 20240626 | 145927
+IPV6 | 2409:40c4:302d:815b:8000:: | 20240626 | 144923 | 20240626 | 145923
+IPV6 | 2409:40c4:302d:815b:8000:: | 20240626 | 144920 | 20240626 | 145920
+IPV6 | 2409:40c4:302d:815b:8000:: | 20240626 | 144918 | 20240626 | 145918
+IPV6 | 2409:40c4:302d:815b:8000:: | 20240626 | 143451 | 20240626 | 144451
+IPV6 | 2409:40c4:302d:815b:8000:: | 20240626 | 143447 | 20240626 | 144447
+IPV6 | 2409:40c4:302d:815b:8000:: | 20240626 | 115918 | 20240626 | 120918
+IPV6 | 2409:40c4:302d:815b:8000:: | 20240626 | 115918 | 20240626 | 120918
+IPV6 | 2409:40c4:302d:815b:8000:: | 20240626 | 115914 | 20240626 | 120914
+IPV6 | 2409:40c4:302d:815b:8000:: | 20240626 | 115913 | 20240626 | 120913
+IPV6 | 2409:40c4:2029:b199:8000:: | 20240611 | 183254 | 20240611 | 184254
+IPV6 | 2409:40c4:35:2698:8000:: | 20240607 | 110006 | 20240607 | 111006
+IPV6 | 2409:40c4:9:c44c:8000:: | 20240526 | 122329 | 20240526 | 123329
+IPV6 | 2409:40c4:9:c44c:8000:: | 20240526 | 122247 | 20240526 | 123247
+

@@ -47,11 +47,16 @@ class SecurityValidator:
         r"\x00",
     ]
     
-    # Dangerous patterns for path traversal
+    # Dangerous patterns for path traversal (including URL-encoded variants)
     PATH_TRAVERSAL_PATTERNS = [
         r"\.\.",
+        r"%2e%2e",        # URL-encoded ..
+        r"%2e\.",         # Half-encoded ..
+        r"\.%2e",         # Half-encoded ..
+        r"%252e%252e",    # Double-encoded ..
         r"~",
         r"\x00",
+        r"%00",           # URL-encoded null byte
         r"[;&|`$]",
     ]
     
@@ -89,21 +94,19 @@ class SecurityValidator:
     @staticmethod
     def validate_no_sql_injection(value: str) -> bool:
         """
-        Check for SQL injection patterns
-        
+        Check for SQL injection patterns (case-insensitive)
+
         Args:
             value: Input string
-            
+
         Returns:
             True if safe, False if dangerous
         """
-        value_upper = value.upper()
-        
         for pattern in SecurityValidator.SQL_INJECTION_PATTERNS:
-            if re.search(pattern, value_upper, re.IGNORECASE):
+            if re.search(pattern, value, re.IGNORECASE):
                 logger.warning(f"🚨 SQL injection attempt detected: {value}")
                 return False
-        
+
         return True
     
     @staticmethod

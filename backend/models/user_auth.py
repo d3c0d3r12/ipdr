@@ -1,236 +1,178 @@
 """
-User Authentication and Access Control Models
-Secure login system with role-based access
+User Authentication and Access Control - MongoDB Collections
+Collection definitions and helper factories (no SQLAlchemy ORM)
 """
-
-from sqlalchemy import Column, String, Integer, DateTime, Boolean, JSON, Text
-from sqlalchemy.sql import func
-from core.db import Base
+from datetime import datetime, timezone
 import hashlib
 import secrets
 
+# ---------------------------------------------------------------------------
+# Collection names
+# ---------------------------------------------------------------------------
+USERS_COLLECTION = "users"
+USER_SESSIONS_COLLECTION = "user_sessions"
+USER_ACTIVITIES_COLLECTION = "user_activities"
+LOGIN_ATTEMPTS_COLLECTION = "login_attempts"
+ACCESS_LOGS_COLLECTION = "access_logs"
+USER_PERMISSIONS_COLLECTION = "user_permissions"
+PASSWORD_RESET_TOKENS_COLLECTION = "password_reset_tokens"
 
-class User(Base):
-    """User accounts with role-based access"""
-    __tablename__ = "users"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    
-    # Authentication
-    username = Column(String(100), unique=True, index=True, nullable=False)
-    email = Column(String(200), unique=True, index=True, nullable=False)
-    password_hash = Column(String(256), nullable=False)
-    salt = Column(String(64), nullable=False)
-    
-    # Profile
-    full_name = Column(String(200))
-    badge_number = Column(String(50))
-    department = Column(String(200))
-    designation = Column(String(200))
-    phone_number = Column(String(20))
-    
-    # Role and permissions
-    role = Column(String(50), default="investigator")  # admin, senior_officer, investigator, analyst, viewer
-    permissions = Column(JSON)  # List of specific permissions
-    
-    # Account status
-    is_active = Column(Boolean, default=True)
-    is_verified = Column(Boolean, default=False)
-    is_locked = Column(Boolean, default=False)
-    failed_login_attempts = Column(Integer, default=0)
-    
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    last_login = Column(DateTime(timezone=True))
-    last_password_change = Column(DateTime(timezone=True))
-    
-    # Security
-    two_factor_enabled = Column(Boolean, default=False)
-    two_factor_secret = Column(String(100))
-    recovery_email = Column(String(200))
-    
-    # Metadata
-    created_by = Column(String(100))  # Admin who created this account
-    approved_by = Column(String(100))
-    notes = Column(Text)
-
-
-class UserSession(Base):
-    """Active user sessions"""
-    __tablename__ = "user_sessions"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, index=True, nullable=False)
-    username = Column(String(100), index=True)
-    
-    # Session details
-    session_token = Column(String(256), unique=True, index=True, nullable=False)
-    refresh_token = Column(String(256), unique=True)
-    
-    # Device information
-    ip_address = Column(String(100))
-    user_agent = Column(Text)
-    device_type = Column(String(50))  # desktop, mobile, tablet
-    browser = Column(String(100))
-    os = Column(String(100))
-    
-    # Location
-    country = Column(String(100))
-    city = Column(String(100))
-    
-    # Status
-    is_active = Column(Boolean, default=True)
-    
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    expires_at = Column(DateTime(timezone=True))
-    last_activity = Column(DateTime(timezone=True))
+# ---------------------------------------------------------------------------
+# Index definitions  (applied at startup via ensure_indexes)
+# ---------------------------------------------------------------------------
+INDEXES = {
+    USERS_COLLECTION: [
+        {"keys": "username", "unique": True},
+        {"keys": "email", "unique": True},
+    ],
+    USER_SESSIONS_COLLECTION: [
+        {"keys": "session_token", "unique": True},
+        {"keys": "refresh_token", "unique": True},
+        {"keys": "user_id"},
+    ],
+    USER_ACTIVITIES_COLLECTION: [
+        {"keys": "user_id"},
+        {"keys": "username"},
+        {"keys": "timestamp"},
+        {"keys": "activity_type"},
+    ],
+    LOGIN_ATTEMPTS_COLLECTION: [
+        {"keys": "username"},
+        {"keys": "attempted_at"},
+    ],
+    ACCESS_LOGS_COLLECTION: [
+        {"keys": "user_id"},
+        {"keys": "timestamp"},
+    ],
+    USER_PERMISSIONS_COLLECTION: [
+        {"keys": "user_id"},
+    ],
+    PASSWORD_RESET_TOKENS_COLLECTION: [
+        {"keys": "token", "unique": True},
+        {"keys": "user_id"},
+    ],
+}
 
 
-class UserActivity(Base):
-    """User interaction tracking - everything they do"""
-    __tablename__ = "user_activities"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, index=True)
-    username = Column(String(100), index=True)
-    session_id = Column(Integer, index=True)
-    
-    # Activity details
-    activity_type = Column(String(100), index=True)  # login, logout, view_fir, upload, download, search
-    activity_description = Column(Text)
-    activity_data = Column(JSON)  # Detailed activity data
-    
-    # Page/Resource accessed
-    page_url = Column(String(1000))
-    page_title = Column(String(500))
-    http_method = Column(String(10))  # GET, POST, PUT, DELETE
-    http_status = Column(Integer)
-    
-    # Request details
-    ip_address = Column(String(100), index=True)
-    ipv4 = Column(String(50))
-    ipv6 = Column(String(100))
-    user_agent = Column(Text)
-    referer = Column(String(1000))
-    
-    # Device information
-    device_type = Column(String(50))
-    browser = Column(String(100))
-    browser_version = Column(String(50))
-    os = Column(String(100))
-    os_version = Column(String(50))
-    screen_resolution = Column(String(50))
-    
-    # Location
-    country = Column(String(100))
-    city = Column(String(100))
-    region = Column(String(100))
-    
-    # Timing
-    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
-    duration_ms = Column(Integer)  # How long they spent on page
-    
-    # Cookies and tracking
-    cookies = Column(JSON)
-    session_data = Column(JSON)
-    
-    # FIR context (if applicable)
-    fir_number = Column(String(100), index=True)
-    
-    # Security flags
-    is_suspicious = Column(Boolean, default=False)
-    risk_score = Column(Integer, default=0)
-    notes = Column(Text)
+# ---------------------------------------------------------------------------
+# Document factories  (replace SQLAlchemy model constructors)
+# ---------------------------------------------------------------------------
+def new_user(*, username, email, password_hash, salt, full_name,
+             role="investigator", created_by=None, **extra):
+    doc = {
+        "username": username,
+        "email": email,
+        "password_hash": password_hash,
+        "salt": salt,
+        "full_name": full_name,
+        "badge_number": extra.get("badge_number"),
+        "department": extra.get("department"),
+        "designation": extra.get("designation"),
+        "phone_number": extra.get("phone_number"),
+        "role": role,
+        "permissions": extra.get("permissions"),
+        "is_active": True,
+        "is_verified": False,
+        "is_locked": False,
+        "failed_login_attempts": 0,
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": None,
+        "last_login": None,
+        "last_password_change": extra.get("last_password_change"),
+        "two_factor_enabled": False,
+        "two_factor_secret": None,
+        "recovery_email": None,
+        "created_by": created_by,
+        "approved_by": None,
+        "notes": None,
+    }
+    return doc
 
 
-class LoginAttempt(Base):
-    """Track all login attempts (successful and failed)"""
-    __tablename__ = "login_attempts"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    
-    # Attempt details
-    username = Column(String(100), index=True)
-    email = Column(String(200), index=True)
-    success = Column(Boolean, default=False)
-    failure_reason = Column(String(200))
-    
-    # Device and location
-    ip_address = Column(String(100), index=True)
-    user_agent = Column(Text)
-    device_type = Column(String(50))
-    browser = Column(String(100))
-    os = Column(String(100))
-    country = Column(String(100))
-    city = Column(String(100))
-    
-    # Timestamp
-    attempted_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
-    
-    # Security
-    is_suspicious = Column(Boolean, default=False)
-    blocked = Column(Boolean, default=False)
-    notes = Column(Text)
+def new_user_session(*, user_id, username, session_token, refresh_token,
+                     ip_address=None, user_agent=None, device_type=None,
+                     browser=None, os=None, expires_at=None, **extra):
+    return {
+        "user_id": user_id,
+        "username": username,
+        "session_token": session_token,
+        "refresh_token": refresh_token,
+        "ip_address": ip_address,
+        "user_agent": user_agent,
+        "device_type": device_type,
+        "browser": browser,
+        "os": os,
+        "country": extra.get("country"),
+        "city": extra.get("city"),
+        "is_active": True,
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": expires_at,
+        "last_activity": datetime.now(timezone.utc),
+    }
 
 
-class AccessLog(Base):
-    """Detailed access logs for audit trail"""
-    __tablename__ = "access_logs"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, index=True)
-    username = Column(String(100), index=True)
-    
-    # Access details
-    resource_type = Column(String(100))  # fir, evidence, report, user, settings
-    resource_id = Column(String(200))
-    action = Column(String(100))  # view, create, update, delete, download, export
-    
-    # Request details
-    ip_address = Column(String(100))
-    endpoint = Column(String(500))
-    http_method = Column(String(10))
-    http_status = Column(Integer)
-    
-    # Timing
-    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
-    response_time_ms = Column(Integer)
-    
-    # Data
-    request_data = Column(JSON)
-    response_data = Column(JSON)
-    
-    # Security
-    is_authorized = Column(Boolean, default=True)
-    is_suspicious = Column(Boolean, default=False)
-    notes = Column(Text)
+def new_user_activity(*, user_id=None, username=None, session_id=None,
+                      activity_type=None, activity_description=None,
+                      ip_address=None, user_agent=None, page_url=None,
+                      fir_number=None, **extra):
+    return {
+        "user_id": user_id,
+        "username": username,
+        "session_id": session_id,
+        "activity_type": activity_type,
+        "activity_description": activity_description,
+        "activity_data": extra.get("activity_data"),
+        "page_url": page_url,
+        "page_title": extra.get("page_title"),
+        "http_method": extra.get("http_method"),
+        "http_status": extra.get("http_status"),
+        "ip_address": ip_address,
+        "user_agent": user_agent,
+        "device_type": extra.get("device_type"),
+        "browser": extra.get("browser"),
+        "os": extra.get("os"),
+        "country": extra.get("country"),
+        "city": extra.get("city"),
+        "region": extra.get("region"),
+        "timestamp": datetime.now(timezone.utc),
+        "fir_number": fir_number,
+        "is_suspicious": False,
+        "risk_score": 0,
+        "notes": None,
+    }
 
 
-class UserPermission(Base):
-    """Granular permissions for users"""
-    __tablename__ = "user_permissions"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, index=True, nullable=False)
-    
-    # Permission details
-    permission_name = Column(String(100), index=True)  # view_fir, create_fir, delete_fir, etc.
-    resource_type = Column(String(100))  # fir, user, evidence, report
-    can_create = Column(Boolean, default=False)
-    can_read = Column(Boolean, default=True)
-    can_update = Column(Boolean, default=False)
-    can_delete = Column(Boolean, default=False)
-    can_export = Column(Boolean, default=False)
-    
-    # Scope
-    scope = Column(String(50), default="own")  # own, department, all
-    
-    # Timestamps
-    granted_at = Column(DateTime(timezone=True), server_default=func.now())
-    granted_by = Column(String(100))
-    expires_at = Column(DateTime(timezone=True))
-    
-    # Status
-    is_active = Column(Boolean, default=True)
+def new_login_attempt(*, username=None, email=None, success=False,
+                      failure_reason=None, ip_address=None,
+                      user_agent=None, device_type=None,
+                      browser=None, os=None, **extra):
+    return {
+        "username": username,
+        "email": email,
+        "success": success,
+        "failure_reason": failure_reason,
+        "ip_address": ip_address,
+        "user_agent": user_agent,
+        "device_type": device_type,
+        "browser": browser,
+        "os": os,
+        "country": extra.get("country"),
+        "city": extra.get("city"),
+        "attempted_at": datetime.now(timezone.utc),
+        "is_suspicious": False,
+        "blocked": extra.get("blocked", False),
+        "notes": None,
+    }
+
+
+def new_password_reset_token(*, user_id, email, token, expires_at, request_ip=None):
+    return {
+        "user_id": user_id,
+        "email": email,
+        "token": token,
+        "is_used": False,
+        "used_at": None,
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": expires_at,
+        "request_ip": request_ip,
+    }

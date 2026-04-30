@@ -6,30 +6,41 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ============================================
-# NEON DATABASE CONFIGURATION
+# ENVIRONMENT VALIDATION
 # ============================================
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://username:password@ep-xxx-xxx.ap-south-1.aws.neon.tech/police_data?sslmode=require"
-)
+def validate_required_env():
+    """Validate all required environment variables are set"""
+    required_vars = [
+        ("JWT_SECRET", "JWT secret key for token signing"),
+    ]
+    
+    missing = []
+    for var_name, description in required_vars:
+        if not os.getenv(var_name):
+            missing.append(f"  - {var_name}: {description}")
+    
+    if missing:
+        error_msg = "❌ Missing required environment variables:\n" + "\n".join(missing)
+        print(error_msg)
+        raise RuntimeError(error_msg)
 
-# Alternative: Parse from individual variables
-DB_HOST = os.getenv("DB_HOST", "ep-xxx-xxx.ap-south-1.aws.neon.tech")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "police_data")
-DB_USER = os.getenv("DB_USER", "username")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
-DB_SSL_MODE = os.getenv("DB_SSL_MODE", "require")
+# Call validation on module load
+validate_required_env()
 
-# Construct DATABASE_URL if not provided
-if not DATABASE_URL or DATABASE_URL.startswith("postgresql://username"):
-    DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode={DB_SSL_MODE}"
+# ============================================
+# MONGODB CONFIGURATION
+# ============================================
+MONGODB_URL = os.getenv("MONGODB_URL", os.getenv("DATABASE_URL", "mongodb://localhost:27017"))
+MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "ipdr_tracking")
 
 # ============================================
 # JWT CONFIGURATION
 # ============================================
-JWT_SECRET = os.getenv("JWT_SECRET", "CHANGE_ME_IN_PRODUCTION")
-JWT_REFRESH_SECRET = os.getenv("JWT_REFRESH_SECRET", "CHANGE_ME_IN_PRODUCTION")
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET or JWT_SECRET == "CHANGE_ME_IN_PRODUCTION":
+    raise ValueError("❌ JWT_SECRET must be set to a secure random value in environment")
+
+JWT_REFRESH_SECRET = os.getenv("JWT_REFRESH_SECRET", JWT_SECRET)  # Use same as JWT_SECRET if not provided
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
@@ -75,7 +86,7 @@ Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
 # ENVIRONMENT
 # ============================================
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-DEBUG = os.getenv("DEBUG", "true").lower() == "true"
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 
 

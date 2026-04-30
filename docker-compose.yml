@@ -1,35 +1,54 @@
 version: "3.9"
 
+# IMPORTANT: Create a .env file in this directory (copy from .env.example)
+# and fill in real secrets before running docker-compose up
+
 services:
   db:
     image: postgres:16
     container_name: police_db
     environment:
-      POSTGRES_USER: police
-      POSTGRES_PASSWORD: policepass
-      POSTGRES_DB: police_app
+      POSTGRES_USER: ${POSTGRES_USER:-police}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-police_app}
     ports:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-police}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
-    image: redis:7
+    image: redis:7-alpine
     container_name: police_redis
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
   backend:
     build:
       context: ./backend
     container_name: police_backend
     environment:
-      - DATABASE_URL=postgresql+asyncpg://police:policepass@db:5432/police_app
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-police}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-police_app}
       - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=dev-secret-change
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - DEBUG=false
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3001}
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - "8000:8000"
 
@@ -38,7 +57,7 @@ services:
       context: ./frontend
     container_name: police_frontend
     environment:
-      - NUXT_PUBLIC_API_BASE=http://localhost:8000
+      - VITE_API_BASE=${VITE_API_BASE:-http://localhost:8000}
     ports:
       - "3001:3000"
     depends_on:

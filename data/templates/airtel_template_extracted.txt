@@ -1,0 +1,62 @@
+================================================================================
+FILE: c:\Users\saheb\Downloads\New FIR\IP Airtel.docx
+================================================================================
+
+Seeking data under the statutory provisions contained in Section 94 of the Bharatiya Nagarik Suraksha Sanhita, 2023 or Section 5(2) of the Indian Telegraph Act, 1885 read with Rule 419A of the Indian Telegraph (Amendment) Rules, 2007.
+OFFICE OF THE CYBER CRIME UNIT, IFSO, SPECIAL CELL, DELHI POLICE, 
+SEC - 16C, DWARKA, NEW DELHI - 110078
+Contact No. 011-20892632, E-Mail ID : acp-cybercell1@delhipolice.gov.in
+Notice u/s 94 BNSS 2023
+To,
+     	     The Nodal Officer
+        	     Airtel
+Subject: - Reg provide information in case the case FIR No. 538/24, PS Special Cell (supertraders306@gmail.com)- Airtel
+Sir,
+                            It is submitted that a case FIR No. 538/2024, u/s 319/318/61(2) BNS, dated 27.11.2025, PS Special Cell, Delhi has been registered at PS Special Cell and investigating at IFSO/Special Cell, Sec 16C, Dwarka, New Delhi. 
+You are hereby requested to provide the following information/documents: - 
+1. Details of the user (Name, Address, Contact No. etc.) to whom below IP’s were allotted at the     mentioned Date & time against each.
+2. Kindly provide the ownership of the users, to whom IP was allotted.
+3. Kindly preserve the record till further directions.  
+4. Kindly provide any other useful details. 
+The above-mentioned information is urgent and a prompt reply is anticipated. 
+
+Inspector Vikram Singh 
+IFSO, Special Cell
+Sec. 16C, Dwarka, New Delhi
+Contact No.: 9650486980
+    Dated: 31.10.2025
+
+
+--- TABLES ---
+
+Table 1:
+Type | Search Value | From Date | From Time
+IPV6 | 2401:4900:51d8:67f3:1a7d:2a8d:65c7:3fc8 | 31.07.2024 | 02:30:30
+IPV6 | 2401:4900:51e6:d4cf:7f46:c920:b47b:7791 | 30.07.2024 | 18:55:04
+IPV6 | 2401:4900:51e6:d4cf:7f46:c920:b47b:7791 | 30.07.2024 | 18:28:20
+IPV6 | 2401:4900:51e6:d4cf:7f46:c920:b47b:7791 | 30.07.2024 | 18:27:53
+IPV6 | 2401:4900:51e6:d4cf:7f46:c920:b47b:7791 | 30.07.2024 | 15:15:08
+IPV6 | 2401:4900:51e6:d4cf:7f46:c920:b47b:7791 | 30.07.2024 | 15:14:30
+IPV6 | 2401:4900:55af:e01:ed74:57e4:63c2:3ecd | 29.07.2024 | 01:33:25
+IPV6 | 2401:4900:55af:e01:ed74:57e4:63c2:3ecd | 29.07.2024 | 01:32:55
+IPV6 | 2401:4900:51f8:d965:885c:89a0:3fa6:274e | 24.07.2024 | 14:12:42
+IPV6 | 2401:4900:51f8:d965:885c:89a0:3fa6:274e | 24.07.2024 | 14:12:11
+IPV6 | 2401:4900:7b3f:7262:1e5b:5a1e:60b5:a19 | 23.07.2024 | 14:29:16
+IPV6 | 2401:4900:7b3f:7262:1e5b:5a1e:60b5:a19 | 23.07.2024 | 14:28:56
+IPV6 | 2401:4900:7cd3:347c:96d8:e156:57fb:2b0c | 23.07.2024 | 07:41:22
+IPV6 | 2401:4900:7cd3:347c:96d8:e156:57fb:2b0c | 23.07.2024 | 07:40:51
+IPV6 | 2401:4900:55bf:8145:2329:5186:d880:cf42 | 18.07.2024 | 17:57:43
+IPV6 | 2401:4900:55bf:8145:2329:5186:d880:cf42 | 18.07.2024 | 17:57:15
+IPV6 | 2401:4900:55bf:5c23:26b7:4218:327c:5056 | 17.07.2024 | 04:59:07
+IPV6 | 2401:4900:55bf:5c23:26b7:4218:327c:5056 | 17.07.2024 | 04:58:37
+IPV6 | 2401:4900:55b5:ce7b:5bea:691:3958:4518 | 09.07.2024 | 10:37:36
+IPV6 | 2401:4900:55b5:ce7b:5bea:691:3958:4518 | 09.07.2024 | 10:37:11
+IPV6 | 2401:4900:51de:3eb5:74fa:70ff:fe2c:d57d | 26.06.2024 | 14:40:32
+IPV6 | 2401:4900:51de:3eb5:74fa:70ff:fe2c:d57d | 26.06.2024 | 14:40:27
+IPV6 | 2401:4900:51de:3eb5:74fa:70ff:fe2c:d57d | 26.06.2024 | 14:40:19
+IPV6 | 2401:4900:51de:3eb5:74fa:70ff:fe2c:d57d | 26.06.2024 | 14:40:18
+IPV6 | 2401:4900:7cde:26b8:d8f2:ccff:fe5a:3a52 | 21.06.2024 | 13:02:44
+IPV6 | 2401:4900:7cde:26b8:d8f2:ccff:fe5a:3a52 | 21.06.2024 | 13:02:40
+IPV6 | 2401:4900:7cde:26b8:d8f2:ccff:fe5a:3a52 | 21.06.2024 | 13:02:31
+IPV6 | 2401:4900:7cde:26b8:d8f2:ccff:fe5a:3a52 | 21.06.2024 | 13:02:30
+

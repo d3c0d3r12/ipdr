@@ -1,18 +1,31 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from fastapi.responses import FileResponse
 from pathlib import Path
-from typing import List
 from utils.csv_cleaner import _clean_one, build_lookup
 from utils.merge_data import merge_all
 from utils.extract_html import _find_table, _extract_rows
+from utils.path_security import safe_get_run_dir
+from core.config import PROCESSED_DIR
+from routers.auth_secure import get_current_user
+
 
 router = APIRouter()
 
 
+def _resolve_run_dir(run_dir_input: str) -> Path:
+	# Accept full path or basename; always constrain under PROCESSED_DIR
+	try:
+		p = Path(run_dir_input)
+		run_name = p.name if p.is_absolute() else run_dir_input
+	except Exception:
+		run_name = run_dir_input
+	return safe_get_run_dir(run_name, PROCESSED_DIR)
+
+
 @router.get("/extract")
-def extract(run_dir: str = Query(...)):
+def extract(run_dir: str = Query(...), _user: dict = Depends(get_current_user)):
 	"""Extracts IPs/timestamps from uploaded HTML files"""
-	run = Path(run_dir)
+	run = _resolve_run_dir(run_dir)
 	if not run.exists():
 		raise HTTPException(status_code=404, detail="run_dir not found")
 	
@@ -35,9 +48,9 @@ def extract(run_dir: str = Query(...)):
 
 
 @router.post("/merge")
-def merge(run_dir: str = Query(...)):
+def merge(run_dir: str = Query(...), _user: dict = Depends(get_current_user)):
 	"""Merges InfoByIP CSVs and creates master Excel"""
-	run = Path(run_dir)
+	run = _resolve_run_dir(run_dir)
 	if not run.exists():
 		raise HTTPException(status_code=404, detail="run_dir not found")
 	
@@ -67,9 +80,9 @@ def merge(run_dir: str = Query(...)):
 
 
 @router.get("/export")
-def export_excel(run_dir: str = Query(...)):
+def export_excel(run_dir: str = Query(...), _user: dict = Depends(get_current_user)):
 	"""Export final Excel file"""
-	run = Path(run_dir)
+	run = _resolve_run_dir(run_dir)
 	if not run.exists():
 		raise HTTPException(status_code=404, detail="run_dir not found")
 	
@@ -88,9 +101,6 @@ def export_excel(run_dir: str = Query(...)):
 		media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 		filename='master_ip_data.xlsx'
 	)
-
-
-
 
 
 

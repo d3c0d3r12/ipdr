@@ -757,10 +757,15 @@ class EnhancedCloudflareBypass:
             }
     
     def screenshot(self, filename: str = "bypass_screenshot.png"):
-        """Take screenshot"""
+        """Take screenshot (safe - handles crashed browser)"""
         if self.driver:
-            self.driver.save_screenshot(filename)
-            self.log(f"Screenshot: {filename}", "SUCCESS")
+            try:
+                self.driver.save_screenshot(filename)
+                self.log(f"Screenshot: {filename}", "SUCCESS")
+            except Exception as e:
+                # Browser may have crashed - ignore screenshot errors
+                self.log(f"Screenshot failed (browser may have crashed): {str(e)}", "WARNING")
+                pass
     
     def close(self):
         """Close driver and cleanup"""

@@ -157,8 +157,11 @@ def fetch_with_undetected_chrome(url: str, batch_text: str, log_path: Path) -> O
         
         if not textarea:
             _log(log_path, "[advanced] ❌ Textarea not found")
-            driver.save_screenshot(str(log_path.parent / "debug_screenshot.png"))
-            (log_path.parent / "debug_page_advanced.html").write_text(driver.page_source, encoding='utf-8')
+            try:
+                driver.save_screenshot(str(log_path.parent / "debug_screenshot.png"))
+                (log_path.parent / "debug_page_advanced.html").write_text(driver.page_source, encoding='utf-8')
+            except:
+                pass  # Browser may have crashed
             return None
         
         # Scroll to textarea
@@ -241,8 +244,11 @@ def fetch_with_undetected_chrome(url: str, batch_text: str, log_path: Path) -> O
         
         if not table:
             _log(log_path, "[advanced] ❌ Results table not found")
-            driver.save_screenshot(str(log_path.parent / "debug_screenshot_results.png"))
-            (log_path.parent / "debug_page_results.html").write_text(driver.page_source, encoding='utf-8')
+            try:
+                driver.save_screenshot(str(log_path.parent / "debug_screenshot_results.png"))
+                (log_path.parent / "debug_page_results.html").write_text(driver.page_source, encoding='utf-8')
+            except:
+                pass  # Browser may have crashed
             return None
         
         # Parse table to CSV
@@ -273,7 +279,9 @@ def fetch_with_undetected_chrome(url: str, batch_text: str, log_path: Path) -> O
             try:
                 driver.save_screenshot(str(log_path.parent / "debug_error.png"))
                 (log_path.parent / "debug_error.html").write_text(driver.page_source, encoding='utf-8')
-            except:
+            except Exception as screenshot_error:
+                # Browser may have crashed - ignore screenshot errors
+                _log(log_path, f"[advanced] ⚠️ Screenshot failed (browser crashed): {screenshot_error}")
                 pass
         return None
         
