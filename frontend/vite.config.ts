@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: 3000
+    port: 3000,
+    allowedHosts: ['ted-requested-varying-threatening.trycloudflare.com', 'localhost', '127.0.0.1']
   }
 })
