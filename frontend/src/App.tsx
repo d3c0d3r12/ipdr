@@ -14,7 +14,8 @@ import MapPage from './pages/MapPage'
 import FirDetailsPage from './pages/FirDetailsPage'
 import MultiFileUploadPage from './pages/MultiFileUploadPage'
 import ReportCreationPage from './pages/ReportCreationPage'
-import IspLettersPage from './pages/IspLettersPage'
+import IspLettersCatalogPage from './pages/IspLettersCatalogPage'
+import AdminUsersPage from './pages/AdminUsersPage'
 import PlaceholderPage from './pages/PlaceholderPage'
 
 function HomeRedirect() {
@@ -23,6 +24,16 @@ function HomeRedirect() {
 }
 
 function ProtectedLayout({ children }: { children: JSX.Element }) {
+  return (
+    <ProtectedRoute>
+      <Layout>{children}</Layout>
+    </ProtectedRoute>
+  )
+}
+
+function AdminLayout({ children }: { children: JSX.Element }) {
+  const { user } = useAuth()
+  if (user && user.role !== 'admin') return <Navigate to="/dashboard" replace />
   return (
     <ProtectedRoute>
       <Layout>{children}</Layout>
@@ -48,7 +59,8 @@ export default function App() {
 
         <Route path="/multi-file-upload" element={<ProtectedLayout><MultiFileUploadPage /></ProtectedLayout>} />
         <Route path="/report-creation" element={<ProtectedLayout><ReportCreationPage /></ProtectedLayout>} />
-        <Route path="/isp-letters" element={<ProtectedLayout><IspLettersPage /></ProtectedLayout>} />
+        <Route path="/isp-letters" element={<ProtectedLayout><IspLettersCatalogPage /></ProtectedLayout>} />
+        <Route path="/admin/users" element={<AdminLayout><AdminUsersPage /></AdminLayout>} />
         <Route path="/profile" element={<ProtectedLayout><PlaceholderPage title="Profile" /></ProtectedLayout>} />
         <Route path="/settings" element={<ProtectedLayout><PlaceholderPage title="Settings" /></ProtectedLayout>} />
         <Route path="*" element={<HomeRedirect />} />

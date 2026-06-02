@@ -8,9 +8,12 @@ from pydantic import BaseModel
 from typing import Optional
 from pathlib import Path
 import shutil
+import csv
+import json
 
 from core.db import get_db
 from database import get_session
+from core.config import PROCESSED_DIR
 from services.fir_service import FIRService
 from services.auth_service import AuthService
 from models.fir_case import FIR_CASES_COLLECTION, new_fir_case
@@ -19,6 +22,48 @@ from routers.auth_secure import get_current_user
 
 
 router = APIRouter()
+
+
+def _find_latest_run_for_fir(fir_number: str) -> Optional[Path]:
+    """Locate the most recent processed run directory belonging to a FIR.
+
+    The enrichment pipeline writes results to processed/<timestamp>_<fir> and
+    records the original FIR in processing_options.txt ("FIR: <value>"). We match
+    on that line first (robust against name sanitization), then fall back to the
+    directory-name suffix. Returns the latest matching run dir, or None.
+    """
+    base = Path(PROCESSED_DIR)
+    if not base.exists():
+        return None
+
+    fir_clean = (fir_number or "").strip()
+    if not fir_clean:
+        return None
+    safe_fir = ''.join(c if c.isalnum() or c in ('-', '_') else '-' for c in fir_clean)[:64]
+
+    candidates = []
+    for run in base.iterdir():
+        if not run.is_dir():
+            continue
+        matched = False
+        opts = run / 'processing_options.txt'
+        if opts.exists():
+            try:
+                for line in opts.read_text(encoding='utf-8', errors='replace').splitlines():
+                    if line.startswith('FIR:'):
+                        matched = line.split(':', 1)[1].strip() == fir_clean
+                        break
+            except Exception:
+                pass
+        if not matched and safe_fir and run.name.endswith(f"_{safe_fir}"):
+            matched = True
+        if matched:
+            candidates.append(run)
+
+    if not candidates:
+        return None
+    # Directory names are timestamp-prefixed, so lexicographic max == most recent.
+    return sorted(candidates, key=lambda p: p.name)[-1]
 
 
 # Pydantic models
@@ -193,49 +238,51 @@ async def get_fir_ip_lookups(
     current_user: dict = Depends(get_current_user),
     db=Depends(get_session)
 ):
-    """Get IP lookup results for a FIR from all investigations"""
+    """Get IP lookup results for a FIR from its latest processed run on disk."""
     fir_case = await db[FIR_CASES_COLLECTION].find_one({"fir_number": fir_number})
     if not fir_case:
         raise HTTPException(status_code=404, detail="FIR case not found")
-    
-    inv_cursor = db[INVESTIGATIONS_COLLECTION].find(
-        {"fir_number": fir_number}, {"_id": 1}
-    )
-    investigations = await inv_cursor.to_list(length=None)
-    investigation_ids = [str(inv["_id"]) for inv in investigations]
-    
-    if not investigation_ids:
-        return {"fir_number": fir_number, "total": 0, "ip_lookups": []}
-    
-    ip_cursor = (
-        db[IP_LOOKUP_RESULTS_COLLECTION]
-        .find({"investigation_id": {"$in": investigation_ids}})
-        .skip(offset)
-        .limit(limit)
-    )
-    ip_lookups = await ip_cursor.to_list(length=limit)
-    
-    total_count = await db[IP_LOOKUP_RESULTS_COLLECTION].count_documents(
-        {"investigation_id": {"$in": investigation_ids}}
-    )
-    
+
+    run = _find_latest_run_for_fir(fir_number)
+    if run is None:
+        return {"fir_number": fir_number, "total": 0, "ip_lookups": [], "run_dir": None}
+
+    csv_file = run / 'ip_lookup_results.csv'
+    if not csv_file.exists():
+        return {"fir_number": fir_number, "total": 0, "ip_lookups": [], "run_dir": run.name}
+
+    rows = []
+    total = 0
+    with csv_file.open('r', encoding='utf-8', errors='replace') as f:
+        reader = csv.DictReader(f)
+        for i, row in enumerate(reader):
+            total += 1
+            if i < offset or len(rows) >= limit:
+                continue
+            country = (row.get('country') or '').strip()
+            city = (row.get('city') or '').strip()
+            isp = (row.get('isp') or '').strip()
+            ip = row.get('ip') or ''
+            # Derive the IP version from the address itself — the CSV 'ip_type' column
+            # is a connection classification (Residential/Mobile/Datacenter), not the version.
+            ip_type = 'IPv6' if ':' in ip else ('IPv4' if '.' in ip else '')
+            rows.append({
+                "ip_address": ip,
+                "ip_type": ip_type or None,
+                "country": country or None,
+                "city": city or None,
+                "region": (row.get('region') or '').strip() or None,
+                "isp": isp or None,
+                "latitude": row.get('latitude'),
+                "longitude": row.get('longitude'),
+                "lookup_status": "success" if country and country.lower() != 'unknown' else "no_data",
+            })
+
     return {
         "fir_number": fir_number,
-        "total": total_count,
-        "ip_lookups": [
-            {
-                "ip_address": ip.get("ip_address"),
-                "country": ip.get("country"),
-                "city": ip.get("city"),
-                "region": ip.get("region"),
-                "isp": ip.get("isp"),
-                "latitude": ip.get("latitude"),
-                "longitude": ip.get("longitude"),
-                "timestamp": str(ip.get("timestamp")) if ip.get("timestamp") else None,
-                "lookup_date": str(ip.get("created_at")) if ip.get("created_at") else None,
-            }
-            for ip in ip_lookups
-        ],
+        "total": total,
+        "ip_lookups": rows,
+        "run_dir": run.name,
     }
 
 
@@ -245,59 +292,69 @@ async def get_fir_statistics(
     current_user: dict = Depends(get_current_user),
     db=Depends(get_session)
 ):
-    """Get comprehensive statistics for FIR"""
-    investigations = await db[INVESTIGATIONS_COLLECTION].find(
-        {"fir_number": fir_number}
-    ).to_list(length=None)
+    """Get statistics for a FIR from its latest processed run on disk."""
+    empty = {
+        "fir_number": fir_number,
+        "total_ip_lookups": 0,
+        "unique_ips": 0,
+        "unique_countries": 0,
+        "unique_cities": 0,
+        "total_cities": 0,
+        "total_isps": 0,
+        "top_isps": [],
+        "run_dir": None,
+    }
 
-    if not investigations:
-        return {
-            "fir_number": fir_number,
-            "total_ip_lookups": 0,
-            "unique_ips": 0,
-            "total_investigations": 0,
-            "unique_countries": 0,
-            "total_isps": 0,
-            "total_cities": 0,
-            "progress_percentage": 0,
-            "investigations": [],
-        }
+    run = _find_latest_run_for_fir(fir_number)
+    if run is None:
+        return empty
 
-    total_ips = sum(inv.get("total_ips", 0) for inv in investigations)
-    completed_ips = sum(inv.get("completed_ips", 0) for inv in investigations)
-    investigation_ids = [str(inv["_id"]) for inv in investigations]
+    total_records = 0
+    total_unique = 0
+    top_isps = []
+    summary_file = run / 'ipdr_summary.json'
+    if summary_file.exists():
+        try:
+            data = json.loads(summary_file.read_text(encoding='utf-8'))
+            total_records = data.get('total_records', 0)
+            total_unique = data.get('total_unique_ips', 0)
+            top_isps = (data.get('by_isp') or [])[:10]
+        except Exception:
+            pass
 
-    # Count distinct values
-    countries = await db[IP_LOOKUP_RESULTS_COLLECTION].distinct(
-        "country", {"investigation_id": {"$in": investigation_ids}, "country": {"$ne": None}}
-    )
-    isps = await db[IP_LOOKUP_RESULTS_COLLECTION].distinct(
-        "isp", {"investigation_id": {"$in": investigation_ids}, "isp": {"$ne": None}}
-    )
-    cities = await db[IP_LOOKUP_RESULTS_COLLECTION].distinct(
-        "city", {"investigation_id": {"$in": investigation_ids}, "city": {"$ne": None}}
-    )
+    countries: set = set()
+    cities: set = set()
+    isps: set = set()
+    row_count = 0
+    csv_file = run / 'ip_lookup_results.csv'
+    if csv_file.exists():
+        try:
+            with csv_file.open('r', encoding='utf-8', errors='replace') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    row_count += 1
+                    c = (row.get('country') or '').strip()
+                    if c and c.lower() != 'unknown':
+                        countries.add(c)
+                    ci = (row.get('city') or '').strip()
+                    if ci and ci.lower() != 'unknown':
+                        cities.add(ci)
+                    isp = (row.get('isp') or '').strip()
+                    if isp:
+                        isps.add(isp)
+        except Exception:
+            pass
 
     return {
         "fir_number": fir_number,
-        "total_ip_lookups": completed_ips,
-        "unique_ips": total_ips,
-        "total_investigations": len(investigations),
+        "total_ip_lookups": total_records or row_count,
+        "unique_ips": total_unique or row_count,
         "unique_countries": len(countries),
-        "total_isps": len(isps),
+        "unique_cities": len(cities),
         "total_cities": len(cities),
-        "progress_percentage": round((completed_ips / total_ips * 100) if total_ips > 0 else 0, 1),
-        "investigations": [
-            {
-                "id": str(inv["_id"]),
-                "name": inv.get("investigation_name"),
-                "status": inv.get("status"),
-                "total_ips": inv.get("total_ips", 0),
-                "completed_ips": inv.get("completed_ips", 0),
-                "progress": float(inv.get("progress_percentage", 0)),
-            }
-            for inv in investigations
-        ],
+        "total_isps": len(isps),
+        "top_isps": top_isps,
+        "run_dir": run.name,
     }
 
 

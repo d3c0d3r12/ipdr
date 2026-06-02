@@ -48,11 +48,21 @@ def get_records(run_dir: str = Query(None), limit: int = Query(100), _user: dict
 				rows.append(row)
 		return {"count": len(rows), "records": rows}
 	else:
+		# Scope to the runs of FIR cases that actually exist (latest run per case),
+		# rather than every run folder ever processed on disk.
+		from routers.fir_management import _find_latest_run_for_fir
+		from models.fir_case import FIR_CASES_COLLECTION
+
 		records = []
-		# Aggregate from all processed run directories
-		for run in _iter_processed_runs():
+		seen_runs: set = set()
+		db = get_db()
+		for fc in db[FIR_CASES_COLLECTION].find({}, {"fir_number": 1}):
 			if len(records) >= limit:
 				break
+			run = _find_latest_run_for_fir(fc.get("fir_number", ""))
+			if run is None or run.name in seen_runs:
+				continue
+			seen_runs.add(run.name)
 			csv_file = run / 'ip_lookup_results.csv'
 			if not csv_file.exists():
 				continue
@@ -117,12 +127,23 @@ def get_summary(run_dir: str = Query(None), _user: dict = Depends(get_current_us
 					cities.add(row['City'])
 		return {"total": total, "countries": len(countries), "cities": len(cities), "suspicious": 0}
 	else:
+		# Scope totals to FIR cases that actually exist: sum the latest run per case,
+		# rather than every run folder ever processed on disk.
+		from routers.fir_management import _find_latest_run_for_fir
+		from models.fir_case import FIR_CASES_COLLECTION
+
 		total = 0
 		countries: set = set()
 		cities: set = set()
+		seen_runs: set = set()
 
-		for run in _iter_processed_runs():
-			# Sum totals from ipdr_summary.json (fast — no full CSV scan needed for counts)
+		db = get_db()
+		for fc in db[FIR_CASES_COLLECTION].find({}, {"fir_number": 1}):
+			run = _find_latest_run_for_fir(fc.get("fir_number", ""))
+			if run is None or run.name in seen_runs:
+				continue
+			seen_runs.add(run.name)
+
 			summary_file = run / 'ipdr_summary.json'
 			if summary_file.exists():
 				try:
@@ -131,26 +152,19 @@ def get_summary(run_dir: str = Query(None), _user: dict = Depends(get_current_us
 				except Exception:
 					pass
 
-			# Extract distinct countries and cities from the results CSV
 			csv_file = run / 'ip_lookup_results.csv'
 			if csv_file.exists():
 				try:
 					with csv_file.open('r', encoding='utf-8', errors='replace') as f:
 						reader = csv.DictReader(f)
 						for row in reader:
-							if row.get('country'):
-								countries.add(row['country'])
-							if row.get('city'):
-								cities.add(row['city'])
+							c = (row.get('country') or '').strip()
+							if c and c.lower() != 'unknown':
+								countries.add(c)
+							ci = (row.get('city') or '').strip()
+							if ci and ci.lower() != 'unknown':
+								cities.add(ci)
 				except Exception:
 					continue
-
-		# Fall back to MongoDB if nothing found on disk
-		if total == 0:
-			db = get_db()
-			total = db[IP_RECORDS_COLLECTION].count_documents({})
-			if total > 0:
-				countries = set(db[IP_RECORDS_COLLECTION].distinct("country"))
-				cities = set(db[IP_RECORDS_COLLECTION].distinct("city"))
 
 		return {"total": total, "countries": len(countries), "cities": len(cities), "suspicious": 0}

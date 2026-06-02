@@ -5,8 +5,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 type NavItem = {
   to: string
   label: string
-  icon: 'dashboard' | 'upload' | 'lookup' | 'list' | 'analytics' | 'map' | 'letters' | 'reports' | 'multi'
-  section: 'main' | 'investigate' | 'analyze' | 'reports'
+  icon: 'dashboard' | 'upload' | 'lookup' | 'list' | 'analytics' | 'map' | 'letters' | 'reports' | 'multi' | 'users'
+  section: 'main' | 'investigate' | 'analyze' | 'reports' | 'admin'
+  adminOnly?: boolean
 }
 
 const navItems: NavItem[] = [
@@ -16,8 +17,8 @@ const navItems: NavItem[] = [
   { to: '/ip-list',          label: 'IP Records',   icon: 'list',       section: 'investigate' },
   { to: '/analytics',        label: 'Analytics',    icon: 'analytics',  section: 'analyze' },
   { to: '/map',              label: 'Geo Map',      icon: 'map',        section: 'analyze' },
-  { to: '/report-creation',  label: 'Generate Reports', icon: 'reports', section: 'reports' },
   { to: '/isp-letters',      label: 'ISP Letters',  icon: 'letters',    section: 'reports' },
+  { to: '/admin/users',      label: 'User Approvals', icon: 'users',    section: 'admin', adminOnly: true },
 ]
 
 const SECTION_LABELS: Record<NavItem['section'], string> = {
@@ -25,6 +26,7 @@ const SECTION_LABELS: Record<NavItem['section'], string> = {
   investigate: 'Investigation',
   analyze:     'Analysis',
   reports:     'Reports',
+  admin:       'Administration',
 }
 
 function Icon({ name }: { name: NavItem['icon'] }) {
@@ -38,6 +40,7 @@ function Icon({ name }: { name: NavItem['icon'] }) {
     map:       'M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2V6Z',
     letters:   'M4 4h16v16H4V4Zm0 3 8 6 8-6',
     reports:   'M7 3h8l4 4v14H7V3Zm8 0v4h4M10 12h6m-6 4h4',
+    users:     'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   }
   return (
     <svg className="nav-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -57,6 +60,7 @@ function pageTitleFor(pathname: string): string {
     '/map':               'Geo Intelligence',
     '/report-creation':   'Generate Reports',
     '/isp-letters':       'ISP Letters',
+    '/admin/users':       'User Approvals',
     '/profile':           'Profile',
     '/settings':          'Settings',
   }
@@ -72,15 +76,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
-  // Group nav items by section
+  // Group nav items by section (admin-only items are hidden for non-admins)
+  const isAdmin = user?.role === 'admin'
   const sections = useMemo(() => {
     const groups: Partial<Record<NavItem['section'], NavItem[]>> = {}
     for (const item of navItems) {
+      if (item.adminOnly && !isAdmin) continue
       if (!groups[item.section]) groups[item.section] = []
       groups[item.section]!.push(item)
     }
     return groups
-  }, [])
+  }, [isAdmin])
 
   const handleLogout = async () => {
     await logout()

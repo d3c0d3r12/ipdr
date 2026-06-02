@@ -1,5 +1,6 @@
 from datetime import datetime
 from datetime import timedelta
+from datetime import timezone
 from pathlib import Path
 from typing import Any, Dict, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -648,6 +649,74 @@ def _build_letter_rows_df(run: Path, isp_filter: str | None, template_type: str)
 	return pd.DataFrame(rows)
 
 
+def _record_letter_generation(fir_number: str, run_dir_name: str, scope: str, username: str):
+	"""Persist a record that ISP letter(s) were generated, for the catalog view."""
+	try:
+		from core.db import get_db
+		db = get_db()
+		db["generated_letters"].update_one(
+			{"fir_number": fir_number, "scope": scope},
+			{"$set": {
+				"fir_number": fir_number,
+				"run_dir": run_dir_name,
+				"scope": scope,
+				"generated_by": username,
+				"generated_at": datetime.now(timezone.utc),
+			}},
+			upsert=True,
+		)
+	except Exception:
+		pass
+
+
+@router.get("/ipdr/letters/catalog")
+def isp_letters_catalog(_user: dict = Depends(get_current_user)):
+	"""List every FIR case that has processed data, with its ISPs and last-generated time."""
+	from core.db import get_db
+	from models.fir_case import FIR_CASES_COLLECTION
+	from routers.fir_management import _find_latest_run_for_fir
+
+	db = get_db()
+
+	# Latest generation timestamp per FIR (sorted desc so first seen is newest).
+	gen_by_fir: Dict[str, Any] = {}
+	for g in db["generated_letters"].find({}).sort("generated_at", -1):
+		fn = g.get("fir_number")
+		if fn not in gen_by_fir:
+			gen_by_fir[fn] = g.get("generated_at")
+
+	cases = []
+	for fc in db[FIR_CASES_COLLECTION].find({}).sort("created_at", -1):
+		fir_number = fc.get("fir_number", "")
+		run = _find_latest_run_for_fir(fir_number)
+		if run is None:
+			continue
+		isps = []
+		total_records = 0
+		unique_ips = 0
+		summary_file = run / "ipdr_summary.json"
+		if summary_file.exists():
+			try:
+				data = json.loads(summary_file.read_text(encoding="utf-8"))
+				isps = data.get("by_isp", []) or []
+				total_records = data.get("total_records", 0)
+				unique_ips = data.get("total_unique_ips", 0)
+			except Exception:
+				pass
+		last = gen_by_fir.get(fir_number)
+		cases.append({
+			"fir_number": fir_number,
+			"case_title": fc.get("case_title"),
+			"run_dir": run.name,
+			"total_isps": len(isps),
+			"total_records": total_records,
+			"unique_ips": unique_ips,
+			"isps": isps,
+			"last_generated_at": last.isoformat() if hasattr(last, "isoformat") else None,
+		})
+	return {"success": True, "cases": cases}
+
+
 @router.post("/ipdr/letters")
 async def generate_isp_letters_from_run(
 	run_dir: str = Query(...),
@@ -723,6 +792,7 @@ async def generate_isp_letters_from_run(
 					pass
 
 	zip_buffer.seek(0)
+	_record_letter_generation(fir_number, run.name, "ALL ISPs", _user.get("username", "unknown"))
 	return StreamingResponse(
 		iter([zip_buffer.getvalue()]),
 		media_type="application/zip",
@@ -792,6 +862,7 @@ async def generate_single_isp_letter_from_run(
 	safe_name = isp_clean.replace(" ", "_").replace("/", "_").replace("\\", "_")
 	filename = f"{safe_name}_Letter_{fir_number.replace('/', '-')}.docx"
 
+	_record_letter_generation(fir_number, run.name, isp_name, _user.get("username", "unknown"))
 	return StreamingResponse(
 		iter([doc_buffer.getvalue()]),
 		media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",

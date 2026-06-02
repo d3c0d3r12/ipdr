@@ -95,8 +95,18 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session expired or invalid"
         )
-    
+
     return user
+
+
+async def get_current_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    """Allow only admin users through. Use as a dependency on admin routes."""
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required",
+        )
+    return current_user
 
 
 @router.post("/signup", response_model=LoginResponse)
@@ -293,6 +303,65 @@ async def verify_token(
         "username": current_user["username"],
         "role": current_user.get("role", "investigator"),
     }
+
+
+@router.get("/admin/users")
+async def admin_list_users(
+    user_status: Optional[str] = None,
+    admin: dict = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    """List users for admin management. Query ?user_status=pending|approved to filter."""
+    users = AuthService.list_users(db, status=user_status)
+    return {"success": True, "users": users, "count": len(users)}
+
+
+@router.post("/admin/users/{user_id}/approve")
+async def admin_approve_user(
+    user_id: str,
+    req: Request,
+    admin: dict = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    """Approve a pending user so they can log in."""
+    ok, message = AuthService.approve_user(db, user_id, str(admin["_id"]))
+    if not ok:
+        raise HTTPException(status_code=404, detail=message)
+
+    AuthService.log_activity(
+        db=db,
+        user_id=str(admin["_id"]),
+        username=admin["username"],
+        activity_type="approve_user",
+        activity_description=f"Approved user {user_id}",
+        ip_address=req.client.host,
+        user_agent=req.headers.get("user-agent", ""),
+    )
+    return {"success": True, "message": message}
+
+
+@router.post("/admin/users/{user_id}/reject")
+async def admin_reject_user(
+    user_id: str,
+    req: Request,
+    admin: dict = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    """Reject and remove a pending user account."""
+    ok, message = AuthService.reject_user(db, user_id)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+
+    AuthService.log_activity(
+        db=db,
+        user_id=str(admin["_id"]),
+        username=admin["username"],
+        activity_type="reject_user",
+        activity_description=f"Rejected user {user_id}",
+        ip_address=req.client.host,
+        user_agent=req.headers.get("user-agent", ""),
+    )
+    return {"success": True, "message": message}
 
 
 @router.post("/refresh-token")

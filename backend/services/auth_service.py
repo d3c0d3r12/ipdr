@@ -91,7 +91,11 @@ class AuthService:
             full_name=full_name, role=role, created_by=created_by,
         )
         user_doc["last_password_change"] = datetime.now(timezone.utc)
-        
+        # Admins are trusted by definition; everyone else waits for approval.
+        if role == "admin":
+            user_doc["is_approved"] = True
+            user_doc["approved_at"] = datetime.now(timezone.utc)
+
         result = db[USERS_COLLECTION].insert_one(user_doc)
         user_doc["_id"] = result.inserted_id
         
@@ -127,7 +131,14 @@ class AuthService:
             attempt_doc["failure_reason"] = "Account inactive"
             db[LOGIN_ATTEMPTS_COLLECTION].insert_one(attempt_doc)
             return None, None, "Account is inactive. Contact administrator."
-        
+
+        # Approval gate: admins are always allowed; everyone else needs admin approval.
+        if user.get("role") != "admin" and not user.get("is_approved", False):
+            attempt_doc["success"] = False
+            attempt_doc["failure_reason"] = "Pending approval"
+            db[LOGIN_ATTEMPTS_COLLECTION].insert_one(attempt_doc)
+            return None, None, "Your account is pending admin approval. Please try again once an administrator approves it."
+
         if not AuthService.verify_password(password, user["password_hash"], user["salt"]):
             failed = (user.get("failed_login_attempts") or 0) + 1
             update_fields = {"failed_login_attempts": failed}
@@ -298,6 +309,79 @@ class AuthService:
             "viewer": ["view_own_fir"],
         }
         return permission in role_permissions.get(user.get("role", ""), [])
+
+    @staticmethod
+    def _serialize_user(user: dict) -> dict:
+        """Strip secrets and normalize a user document for API responses."""
+        return {
+            "id": str(user["_id"]),
+            "username": user.get("username"),
+            "email": user.get("email"),
+            "full_name": user.get("full_name"),
+            "role": user.get("role", "investigator"),
+            "department": user.get("department"),
+            "badge_number": user.get("badge_number"),
+            "designation": user.get("designation"),
+            "phone_number": user.get("phone_number"),
+            "is_active": user.get("is_active", True),
+            "is_approved": bool(user.get("is_approved", False)),
+            "is_locked": bool(user.get("is_locked", False)),
+            "created_at": user.get("created_at"),
+            "approved_at": user.get("approved_at"),
+            "last_login": user.get("last_login"),
+        }
+
+    @staticmethod
+    def list_users(db, status: Optional[str] = None) -> list[dict]:
+        """List users for admin management. status: 'pending' | 'approved' | None (all)."""
+        query: Dict[str, Any] = {}
+        if status == "pending":
+            # Not yet approved and not an admin (admins are implicitly approved).
+            query = {"is_approved": {"$ne": True}, "role": {"$ne": "admin"}}
+        elif status == "approved":
+            query = {"$or": [{"is_approved": True}, {"role": "admin"}]}
+        users = db[USERS_COLLECTION].find(query).sort("created_at", -1)
+        return [AuthService._serialize_user(u) for u in users]
+
+    @staticmethod
+    def _resolve_uid(user_id):
+        try:
+            return ObjectId(user_id) if not isinstance(user_id, ObjectId) else user_id
+        except Exception:
+            return user_id
+
+    @staticmethod
+    def approve_user(db, user_id, admin_id) -> tuple[bool, str]:
+        """Mark a user as approved so they can log in."""
+        uid = AuthService._resolve_uid(user_id)
+        user = db[USERS_COLLECTION].find_one({"_id": uid})
+        if not user:
+            return False, "User not found"
+        if user.get("is_approved"):
+            return True, "User is already approved"
+        db[USERS_COLLECTION].update_one(
+            {"_id": uid},
+            {"$set": {
+                "is_approved": True,
+                "approved_at": datetime.now(timezone.utc),
+                "approved_by": str(admin_id),
+                "is_active": True,
+                "updated_at": datetime.now(timezone.utc),
+            }},
+        )
+        return True, "User approved"
+
+    @staticmethod
+    def reject_user(db, user_id) -> tuple[bool, str]:
+        """Reject (delete) a pending user account."""
+        uid = AuthService._resolve_uid(user_id)
+        user = db[USERS_COLLECTION].find_one({"_id": uid})
+        if not user:
+            return False, "User not found"
+        if user.get("role") == "admin":
+            return False, "Cannot reject an admin account"
+        db[USERS_COLLECTION].delete_one({"_id": uid})
+        return True, "User rejected and removed"
 
     @staticmethod
     def create_password_reset_token(db, email, user_id, request_ip):
