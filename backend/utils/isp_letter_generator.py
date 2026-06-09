@@ -12,6 +12,7 @@ import pandas as pd
 from pathlib import Path
 from typing import Dict, List, Optional
 import io
+from utils.letter_template import substitute
 
 class ISPLetterGenerator:
     """Generate ISP letters with pre-defined templates"""
@@ -725,6 +726,56 @@ class ISPLetterGenerator:
         
         return '\n'.join(lines)
     
+    def render_template_to_docx(self, template: dict, isp_name: str,
+                                ip_data: pd.DataFrame, case_details: dict) -> Document:
+        """Build a letter .docx by walking a template's blocks."""
+        values = dict(case_details)
+        values["isp_name"] = isp_name
+
+        doc = Document()
+        page = template.get("page", {})
+        margins = page.get("margins_inches", {})
+        default_font = page.get("default_font", "Calibri")
+        default_size = page.get("default_size", 10)
+        for section in doc.sections:
+            section.top_margin = Inches(margins.get("top", 0.5))
+            section.bottom_margin = Inches(margins.get("bottom", 0.5))
+            section.left_margin = Inches(margins.get("left", 0.75))
+            section.right_margin = Inches(margins.get("right", 0.75))
+
+        align_map = {
+            "left": WD_ALIGN_PARAGRAPH.LEFT,
+            "center": WD_ALIGN_PARAGRAPH.CENTER,
+            "right": WD_ALIGN_PARAGRAPH.RIGHT,
+        }
+
+        for block in template.get("blocks", []):
+            btype = block.get("type")
+            if btype == "text":
+                p = doc.add_paragraph()
+                p.alignment = align_map.get(block.get("align", "left"), WD_ALIGN_PARAGRAPH.LEFT)
+                run = p.add_run(substitute(block.get("content", ""), values))
+                run.bold = bool(block.get("bold"))
+                run.italic = bool(block.get("italic"))
+                run.font.name = block.get("font") or default_font
+                run.font.size = Pt(block.get("size") or default_size)
+            elif btype == "list":
+                style = block.get("style", "numbered")
+                for i, item in enumerate(block.get("items", []), start=1):
+                    text = substitute(item, values)
+                    prefix = f"{i}. " if style == "numbered" else "• "
+                    p = doc.add_paragraph()
+                    run = p.add_run(prefix + text)
+                    run.font.name = block.get("font") or default_font
+                    run.font.size = Pt(block.get("size") or default_size)
+            elif btype == "ip_table":
+                self._build_ip_table(doc, isp_name, ip_data)
+            elif btype == "spacer":
+                for _ in range(int(block.get("lines", 1))):
+                    doc.add_paragraph()
+
+        return doc
+
     def _build_ip_table(self, doc: Document, isp_name: str, ip_data: pd.DataFrame) -> None:
         """Append the telco-correct IP table for the ISP to the document."""
         template_type = self.get_template_type(isp_name)

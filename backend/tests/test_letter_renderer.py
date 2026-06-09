@@ -79,3 +79,33 @@ def test_build_ip_table_vi_has_6_columns():
     doc = Document()
     ISPLetterGenerator()._build_ip_table(doc, "Vodafone Idea", _sample_df())
     assert len(doc.tables[0].columns) == 6
+
+
+from utils.letter_template import DEFAULT_TEMPLATE
+
+
+def _doc_text(doc):
+    return "\n".join(p.text for p in doc.paragraphs)
+
+
+def test_render_substitutes_placeholders_in_text_and_list():
+    case = {
+        "fir_number": "201/25", "sections": "420 IPC", "fir_date": "01/02/2025",
+        "police_station": "Special Cell", "complainant": "John Doe",
+        "subject": "Reg info", "email_reference": "ref-1",
+        "officer_name": "Insp X", "officer_designation": "IO",
+        "officer_location": "Dwarka", "officer_contact": "999",
+        "letter_date": "09/06/2026",
+    }
+    doc = ISPLetterGenerator().render_template_to_docx(
+        DEFAULT_TEMPLATE, "Airtel", _sample_df(), case)
+    text = _doc_text(doc)
+    assert "FIR No.201/25" in text
+    assert "Insp X" in text
+    assert "{isp_name}" not in text          # all tokens replaced
+    assert "Airtel" in text                  # isp_name injected
+    # numbered list rendered
+    assert "1. Details of the user" in text
+    # the smart table is present with 4 cols (Airtel)
+    assert len(doc.tables) == 1
+    assert len(doc.tables[0].columns) == 4
