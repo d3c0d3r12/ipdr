@@ -725,6 +725,94 @@ class ISPLetterGenerator:
         
         return '\n'.join(lines)
     
+    def _build_ip_table(self, doc: Document, isp_name: str, ip_data: pd.DataFrame) -> None:
+        """Append the telco-correct IP table for the ISP to the document."""
+        template_type = self.get_template_type(isp_name)
+
+        if template_type == 'airtel':
+            table = doc.add_table(rows=1, cols=4)
+            table.style = 'Table Grid'
+            hdr = table.rows[0].cells
+            hdr[0].text, hdr[1].text = 'Type', 'Search Value'
+            hdr[2].text = 'From Date\n(DD-MMM-YYYY)\n(HH24:MI:SS)'
+            hdr[3].text = 'To Date\n(DD-MMM-YYYY)\n(HH24:MI:SS)'
+            self._bold_header(hdr, 9)
+            for _, row in ip_data.iterrows():
+                cells = table.add_row().cells
+                ip = str(row.get('Search Value', row.get('ip', '')))
+                ip_type = str(row.get('Type', '')) or ''
+                if not ip_type or ip_type == 'nan':
+                    ip_type = 'IPV6' if ':' in ip else 'IPV4'
+                from_date = str(row.get('From Date', ''))
+                from_time = str(row.get('From Time', ''))
+                if from_date and from_date != 'nan':
+                    fda = self.convert_date_to_airtel_format(from_date)
+                    tda = self.convert_date_to_airtel_format(str(row.get('To Date', '')))
+                    cells[0].text, cells[1].text = ip_type, ip
+                    cells[2].text = fda + ' ' + from_time if from_time and from_time != 'nan' else fda
+                    to_time = str(row.get('To Time', ''))
+                    cells[3].text = tda + ' ' + to_time if to_time and to_time != 'nan' else tda
+                else:
+                    f = self.format_timestamp_for_airtel(row.get('timestamp', ''))
+                    cells[0].text, cells[1].text = ip_type, ip
+                    cells[2].text, cells[3].text = f['from_datetime'], f['to_datetime']
+                self._set_cell_font(cells, 9)
+            return
+
+        # Jio and all others use 6 columns; Jio pads time to 6 digits.
+        is_jio = template_type == 'jio'
+        table = doc.add_table(rows=1, cols=6)
+        table.style = 'Table Grid'
+        hdr = table.rows[0].cells
+        hdr[0].text, hdr[1].text = 'Type', 'Search Value'
+        if is_jio:
+            hdr[2].text, hdr[3].text = 'From Date\nYYYYMMDD', 'From Time\nHHMMSS\n(IST)'
+            hdr[4].text, hdr[5].text = 'To Date\nYYYYMMDD', 'To Time\nHHMMSS\n(IST)'
+        else:
+            hdr[2].text, hdr[3].text = 'From Date\nDD:MM:YYYY', 'From Time\nHH:MM:SS\n(IST)'
+            hdr[4].text, hdr[5].text = 'To Date\nDD:MM:YYYY', 'To Time\nHH:MM:SS\n(IST)'
+        self._bold_header(hdr, 8)
+        for _, row in ip_data.iterrows():
+            cells = table.add_row().cells
+            ip = str(row.get('Search Value', row.get('ip', '')))
+            ip_type = str(row.get('Type', '')) or ''
+            if not ip_type or ip_type == 'nan':
+                ip_type = 'IPV6' if ':' in ip else 'IPV4'
+            from_date = str(row.get('From Date', ''))
+            from_time = str(row.get('From Time', ''))
+            to_date = str(row.get('To Date', ''))
+            to_time = str(row.get('To Time', ''))
+            if from_date and from_date != 'nan':
+                if is_jio:
+                    from_time = self.pad_time_to_6_digits(from_time) if from_time and from_time != 'nan' else '000000'
+                    to_time = self.pad_time_to_6_digits(to_time) if to_time and to_time != 'nan' else '000000'
+                cells[0].text, cells[1].text = ip_type, ip
+                cells[2].text = from_date
+                cells[3].text = from_time if from_time and from_time != 'nan' else ''
+                cells[4].text = to_date if to_date and to_date != 'nan' else ''
+                cells[5].text = to_time if to_time and to_time != 'nan' else ''
+            else:
+                f = (self.format_timestamp_for_jio if is_jio else self.format_timestamp_for_vi)(row.get('timestamp', ''))
+                cells[0].text, cells[1].text = ip_type, ip
+                cells[2].text, cells[3].text = f['from_date'], f['from_time']
+                cells[4].text, cells[5].text = f['to_date'], f['to_time']
+            self._set_cell_font(cells, 8)
+
+    @staticmethod
+    def _bold_header(hdr_cells, size_pt: int) -> None:
+        for cell in hdr_cells:
+            for paragraph in cell.paragraphs:
+                for run in paragraph.runs:
+                    run.bold = True
+                    run.font.size = Pt(size_pt)
+
+    @staticmethod
+    def _set_cell_font(cells, size_pt: int) -> None:
+        for cell in cells:
+            for paragraph in cell.paragraphs:
+                for run in paragraph.runs:
+                    run.font.size = Pt(size_pt)
+
     def generate_letter(self, isp_name: str, ip_data: pd.DataFrame, case_details: Dict) -> Document:
         """
         Generate letter for specific ISP using appropriate template
