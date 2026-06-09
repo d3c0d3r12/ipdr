@@ -12,12 +12,14 @@ def test_substitute_replaces_known_tokens():
 
 def test_substitute_missing_value_becomes_empty():
     assert substitute("Hello {officer_name}!", {}) == "Hello !"
+    assert substitute("FIR {fir_number}", {"fir_number": "0"}) == "FIR 0"
+    assert substitute("FIR {fir_number}", {"fir_number": 2025}) == "FIR 2025"
 
 
 def test_placeholders_list_has_expected_tokens():
     assert "fir_number" in PLACEHOLDERS
     assert "isp_name" in PLACEHOLDERS
-    assert len(PLACEHOLDERS) == 13
+    assert len(PLACEHOLDERS) == 13, "Update this count when adding/removing placeholders"
 
 
 def test_default_template_validates_and_has_single_ip_table():

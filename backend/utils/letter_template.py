@@ -1,7 +1,7 @@
 # backend/utils/letter_template.py
 """Schema + default for ISP letter templates (block-based)."""
 from __future__ import annotations
-from typing import Annotated, List, Literal, Optional, Union
+from typing import Annotated, Dict, List, Literal, Optional, Union
 from pydantic import BaseModel, Field, model_validator
 
 PLACEHOLDERS: List[str] = [
@@ -15,12 +15,13 @@ def substitute(text: str, values: dict) -> str:
     """Replace every {token} with its value (empty string if missing)."""
     out = text
     for token in PLACEHOLDERS:
-        out = out.replace("{" + token + "}", str(values.get(token, "") or ""))
+        value = values.get(token)
+        out = out.replace("{" + token + "}", "" if value is None else str(value))
     return out
 
 
 class PageSettings(BaseModel):
-    margins_inches: dict = Field(
+    margins_inches: Dict[str, float] = Field(
         default_factory=lambda: {"top": 0.5, "bottom": 0.5, "left": 0.75, "right": 0.75}
     )
     default_font: str = "Calibri"
@@ -35,7 +36,7 @@ class TextBlock(BaseModel):
     bold: bool = False
     italic: bool = False
     font: Optional[str] = None
-    size: Optional[int] = None
+    size: Optional[int] = Field(default=None, gt=0)
 
 
 class ListBlock(BaseModel):
@@ -44,7 +45,7 @@ class ListBlock(BaseModel):
     style: Literal["numbered", "bullet"] = "numbered"
     items: List[str] = Field(default_factory=list)
     font: Optional[str] = None
-    size: Optional[int] = None
+    size: Optional[int] = Field(default=None, gt=0)
 
 
 class IpTableBlock(BaseModel):
@@ -55,7 +56,7 @@ class IpTableBlock(BaseModel):
 class SpacerBlock(BaseModel):
     id: str
     type: Literal["spacer"] = "spacer"
-    lines: int = 1
+    lines: int = Field(default=1, ge=1)
 
 
 Block = Annotated[
