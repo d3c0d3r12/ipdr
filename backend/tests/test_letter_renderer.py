@@ -109,3 +109,15 @@ def test_render_substitutes_placeholders_in_text_and_list():
     # the smart table is present with 4 cols (Airtel)
     assert len(doc.tables) == 1
     assert len(doc.tables[0].columns) == 4
+
+
+def test_generate_letter_defaults_to_system_template_when_none_given():
+    case = {"fir_number": "5/25", "subject": "Reg info", "email_reference": "",
+            "police_station": "PS", "sections": "420", "fir_date": "1/1/25",
+            "complainant": "X", "officer_name": "Y", "officer_designation": "IO",
+            "officer_location": "L", "officer_contact": "9", "letter_date": "1/1/26"}
+    doc = ISPLetterGenerator().generate_letter("Airtel", _sample_df(), case)
+    text = _doc_text(doc)
+    assert "Notice u/s 94 BNSS, 2023" in text     # default content present
+    assert "FIR No.5/25" in text
+    assert len(doc.tables[0].columns) == 4         # Airtel table preserved
