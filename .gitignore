@@ -105,4 +105,13 @@ secrets/
 *_old.py
 *_backup.py
 
+# Coverage artifacts
+.coverage
+backend/.coverage
+htmlcov/
+
+# Local junk (screenshots, invoices, scratch PDFs)
+screenshot_*.png
+*Invoice*.pdf
+
 
