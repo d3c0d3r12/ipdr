@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from routers import upload, process, ipdr_processing, data, auth, tracking, ip_lookup, auth_secure, fir_management, cookie_manager, files, multi_file_processor
+from routers import upload, process, ipdr_processing, data, auth, tracking, ip_lookup, auth_secure, fir_management, cookie_manager, files, multi_file_processor, letter_templates
 from core.config import ALLOWED_ORIGINS, ENVIRONMENT
 from core.db import test_connection
 from database import close_client
@@ -75,6 +75,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 # Include routers
 app.include_router(auth_secure.router, prefix="/api/auth", tags=["🔐 Authentication"])
 app.include_router(fir_management.router, prefix="/api/fir", tags=["📁 FIR Management"])
+app.include_router(letter_templates.router, prefix="/api/letter-templates", tags=["📝 Letter Templates"])
 try:
     app.include_router(cloud_storage.router, prefix="/api/cloud", tags=["☁️ Cloud Storage"])
 except NameError:
