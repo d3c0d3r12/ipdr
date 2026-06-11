@@ -131,7 +131,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             />
             <div className="brand">
               <span className="brand-name">IPDR HUB</span>
-              <span className="brand-sub">Delhi Police · Cyber Cell</span>
+              <span className="brand-sub">Delhi Police · Special Cell</span>
             </div>
           </div>
           <div style={{
@@ -182,7 +182,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             borderTop: '1px solid var(--border)', paddingTop: 10,
           }}>
             <div>IPDR Intelligence Platform</div>
-            <div>© IFSO Delhi Police Cyber Cell</div>
+            <div>© IFSO Delhi Police Special Cell</div>
           </div>
         </div>
       </aside>

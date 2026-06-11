@@ -12,7 +12,7 @@ export default function SignupPage() {
     password: '',
     full_name: '',
     badge_number: '',
-    department: 'Cyber Cell',
+    department: 'Special Cell',
   })
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
@@ -100,7 +100,7 @@ export default function SignupPage() {
           </div>
           {field('username',   'Username',    'text',     'Choose a username')}
           {field('email',      'Email',       'email',    'official@delhi.gov.in')}
-          {field('department', 'Department',  'text',     'Cyber Cell')}
+          {field('department', 'Department',  'text',     'Special Cell')}
 
           {/* Password */}
           <div>

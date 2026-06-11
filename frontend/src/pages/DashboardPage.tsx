@@ -355,7 +355,7 @@ export default function DashboardPage() {
           <span style={{ color: 'var(--green)', marginRight: 6 }}>●</span>
           System Operational
         </span>
-        <span>IFSO Delhi Police Cyber Cell · IPDR Intelligence Platform</span>
+        <span>IFSO Delhi Police Special Cell · IPDR Intelligence Platform</span>
         <span style={{ marginLeft: 'auto' }}>
           Total Records:{' '}
           <span style={{ color: 'var(--cyan)', fontFamily: 'JetBrains Mono, monospace' }}>
