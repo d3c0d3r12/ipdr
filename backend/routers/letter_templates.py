@@ -1,8 +1,11 @@
 # backend/routers/letter_templates.py
-from fastapi import APIRouter, Depends, HTTPException
+import base64
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel, ValidationError
 
 from core.db import get_db
+from core.config import MAX_UPLOAD_SIZE
 from routers.auth_secure import get_current_user
 from services import letter_template_service as svc
 
@@ -55,3 +58,46 @@ async def delete_template(tid: str, user=Depends(get_current_user), db=Depends(g
 @router.post("/{tid}/share")
 async def share_template(tid: str, user=Depends(get_current_user), db=Depends(get_db)):
     return {"success": True, "template": _handle(svc.share_template, db, tid, user)}
+
+
+@router.post("/upload-docx")
+async def upload_docx_template(
+    file: UploadFile = File(...),
+    name: str = Form(...),
+    mode: str = Form("raw"),
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """Create a template from an uploaded .docx (mode 'raw' = use as-is, 'convert' = parse to blocks)."""
+    if not (file.filename or "").lower().endswith(".docx"):
+        raise HTTPException(status_code=400, detail="Only .docx files are supported")
+
+    content = await file.read()
+    if len(content) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="File too large")
+
+    if mode == "convert":
+        from utils.docx_import import parse_docx_to_blocks
+        try:
+            blocks = parse_docx_to_blocks(content)
+        except Exception:
+            raise HTTPException(status_code=422, detail="Invalid .docx file")
+        if not blocks:
+            raise HTTPException(status_code=422, detail="Document has no usable content")
+        payload = {"name": name, "kind": "blocks", "blocks": blocks}
+    else:
+        # Validate it is a real docx before storing.
+        try:
+            import io
+            from docx import Document
+            Document(io.BytesIO(content))
+        except Exception:
+            raise HTTPException(status_code=422, detail="Invalid .docx file")
+        payload = {
+            "name": name,
+            "kind": "docx",
+            "blocks": [],
+            "docx_b64": base64.b64encode(content).decode("ascii"),
+        }
+
+    return {"success": True, "template": _handle(svc.create_template, db, user, payload)}

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../lib/auth'
 import {
   Block, LetterTemplate, PLACEHOLDERS, newBlock,
-  listTemplates, createTemplate, updateTemplate, deleteTemplate, shareTemplate,
+  listTemplates, createTemplate, updateTemplate, deleteTemplate, shareTemplate, uploadDocxTemplate,
 } from '../lib/templates'
 
 const SAMPLE_ROW = { type: 'IPV4', ip: '1.2.3.4', fromDate: '28-Jan-2025', fromTime: '14:30:25', toDate: '28-Jan-2025', toTime: '15:30:25' }
@@ -52,6 +52,10 @@ export default function TemplateBuilderPage() {
   const [selBlock, setSelBlock] = useState<string>('')
   const [previewIsp, setPreviewIsp] = useState('Airtel')
   const [msg, setMsg] = useState('')
+  const [showUpload, setShowUpload] = useState(false)
+  const [upFile, setUpFile] = useState<File | null>(null)
+  const [upName, setUpName] = useState('')
+  const [upMode, setUpMode] = useState<'raw' | 'convert'>('raw')
 
   useEffect(() => {
     listTemplates(token).then(r => {
@@ -108,6 +112,22 @@ export default function TemplateBuilderPage() {
   }
   const share = async () => { if (draft) { await shareTemplate(token, draft.id); setMsg('Shared with department') } }
 
+  const doUpload = async () => {
+    if (!upFile) { setMsg('Choose a .docx file first'); return }
+    const name = upName.trim() || upFile.name.replace(/\.docx$/i, '')
+    const r = await uploadDocxTemplate(token, upFile, name, upMode)
+    if (r.success && r.data) {
+      const list = (await listTemplates(token)).data?.templates ?? []
+      setTemplates(list); setSelId(r.data.template.id); setDraft(structuredClone(r.data.template)); setSelBlock('')
+      setShowUpload(false); setUpFile(null); setUpName('')
+      setMsg(upMode === 'raw' ? 'Word file uploaded as template' : 'Word file converted to editable blocks')
+    } else {
+      setMsg(r.error || 'Upload failed')
+    }
+  }
+
+  const isDocx = draft?.kind === 'docx'
+
   if (!draft) return <section><p className="muted">Loading templates…</p></section>
 
   return (
@@ -126,12 +146,52 @@ export default function TemplateBuilderPage() {
         <button className="btn" onClick={saveAs}>Duplicate</button>
         <button className="btn btn-ghost" disabled={!isOwn} onClick={del}>Delete</button>
         {user?.role === 'admin' && <button className="btn btn-ghost" onClick={share}>Share</button>}
+        <button className="btn" onClick={() => setShowUpload(v => !v)}>⬆ Upload .docx</button>
         {msg && <span className="muted" style={{ fontSize: 12 }}>{msg}</span>}
       </div>
+
+      {showUpload && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div>
+              <label style={{ fontSize: 12 }}>Word file (.docx)</label>
+              <input type="file" accept=".docx" onChange={e => setUpFile(e.target.files?.[0] ?? null)} />
+            </div>
+            <div>
+              <label style={{ fontSize: 12 }}>Template name</label>
+              <input value={upName} onChange={e => setUpName(e.target.value)} placeholder="e.g. My Station Letter" />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 12 }}>
+                <input type="radio" checked={upMode === 'raw'} onChange={() => setUpMode('raw')} /> Use as-is (keep exact Word formatting)
+              </label>
+              <label style={{ fontSize: 12 }}>
+                <input type="radio" checked={upMode === 'convert'} onChange={() => setUpMode('convert')} /> Convert to editable blocks
+              </label>
+            </div>
+            <button className="btn btn-primary" onClick={doUpload}>Upload</button>
+          </div>
+          <p className="muted" style={{ fontSize: 11, marginTop: 10, marginBottom: 0 }}>
+            For "Use as-is", put <code>{'{ip_table}'}</code> where the IP table should appear, and tokens like <code>{'{fir_number}'}</code>, <code>{'{officer_name}'}</code> anywhere in the document.
+          </p>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 16, alignItems: 'start' }}>
         <div className="card" style={{ marginBottom: 0 }}>
           <input value={draft.name} onChange={e => mutate(d => { d.name = e.target.value })} disabled={!isOwn && draft.scope !== 'user'} style={{ marginBottom: 10, width: '100%' }} />
+          {isDocx && (
+            <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
+              <p style={{ marginTop: 0 }}>This template is an uploaded Word file, rendered <strong>as-is</strong>. Edit it in Word and re-upload to change the layout.</p>
+              <p>These tokens are filled when letters are generated:</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {[...PLACEHOLDERS, 'ip_table'].map(p => (
+                  <code key={p} style={{ fontSize: 11, background: 'rgba(0,229,255,0.08)', padding: '2px 6px', borderRadius: 4 }}>{`{${p}}`}</code>
+                ))}
+              </div>
+            </div>
+          )}
+          {!isDocx && (<>
           <div style={{ display: 'grid', gap: 4, marginBottom: 10 }}>
             {draft.blocks.map((b, i) => (
               <div key={b.id} onClick={() => setSelBlock(b.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 6, cursor: 'pointer', border: '1px solid var(--border)', background: selBlock === b.id ? 'rgba(0,229,255,0.08)' : 'transparent' }}>
@@ -188,6 +248,7 @@ export default function TemplateBuilderPage() {
               {block.type === 'ip_table' && <p className="muted" style={{ fontSize: 12 }}>Columns auto-format per ISP (Airtel 4-col, Jio/Vi 6-col). Not editable.</p>}
             </div>
           )}
+          </>)}
         </div>
 
         <div className="card" style={{ marginBottom: 0 }}>
@@ -196,7 +257,9 @@ export default function TemplateBuilderPage() {
             <label style={{ fontSize: 12 }}>IP table as: <select value={previewIsp} onChange={e => setPreviewIsp(e.target.value)}><option>Airtel</option><option>Jio</option><option>Vodafone Idea</option></select></label>
           </div>
           <div style={{ background: '#fff', color: '#000', padding: '32px 40px', minHeight: 600, boxShadow: '0 0 0 1px var(--border)' }}>
-            {draft.blocks.map(b => <BlockPreview key={b.id} block={b} isp={previewIsp} />)}
+            {isDocx
+              ? <p style={{ color: '#555', fontSize: 13 }}>No preview for uploaded Word files — the .docx is used exactly as provided. Generate a letter to see the final result.</p>
+              : draft.blocks.map(b => <BlockPreview key={b.id} block={b} isp={previewIsp} />)}
           </div>
           <p className="muted" style={{ fontSize: 11, marginTop: 8 }}>Preview is an approximation. The generated .docx is the final document.</p>
         </div>

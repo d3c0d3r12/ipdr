@@ -13,8 +13,10 @@ export type LetterTemplate = {
   name: string
   owner_id: string | null
   scope: 'system' | 'user' | 'shared'
+  kind: 'blocks' | 'docx'
   page: { margins_inches: Record<string, number>; default_font: string; default_size: number }
   blocks: Block[]
+  docx_b64?: string
 }
 
 export const PLACEHOLDERS = [
@@ -40,6 +42,14 @@ export async function deleteTemplate(token: string, id: string) {
 }
 export async function shareTemplate(token: string, id: string) {
   return apiRequest<{ template: LetterTemplate }>(`/api/letter-templates/${id}/share`, { method: 'POST' }, token)
+}
+
+export async function uploadDocxTemplate(token: string, file: File, name: string, mode: 'raw' | 'convert') {
+  const fd = new FormData()
+  fd.append('file', file)
+  fd.append('name', name)
+  fd.append('mode', mode)
+  return apiRequest<{ template: LetterTemplate }>('/api/letter-templates/upload-docx', { method: 'POST', body: fd }, token)
 }
 
 export function newBlock(type: Block['type']): Block {

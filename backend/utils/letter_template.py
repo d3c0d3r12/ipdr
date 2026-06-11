@@ -69,14 +69,20 @@ class LetterTemplate(BaseModel):
     name: str
     owner_id: Optional[str] = None
     scope: Literal["system", "user", "shared"] = "user"
+    kind: Literal["blocks", "docx"] = "blocks"
     page: PageSettings = Field(default_factory=PageSettings)
-    blocks: List[Block]
+    blocks: List[Block] = Field(default_factory=list)
+    docx_b64: Optional[str] = None
 
     @model_validator(mode="after")
-    def _at_most_one_ip_table(self):
-        n = sum(1 for b in self.blocks if b.type == "ip_table")
-        if n > 1:
-            raise ValueError("A template may contain at most one ip_table block")
+    def _validate_kind(self):
+        if self.kind == "docx":
+            if not self.docx_b64:
+                raise ValueError("A docx template must include docx_b64")
+        else:
+            n = sum(1 for b in self.blocks if b.type == "ip_table")
+            if n > 1:
+                raise ValueError("A template may contain at most one ip_table block")
         return self
 
 

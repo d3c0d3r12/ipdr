@@ -7,6 +7,7 @@ from docx.shared import Pt, Inches, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from datetime import datetime, timedelta
 import os
+import base64
 import zipfile
 import pandas as pd
 from pathlib import Path
@@ -429,10 +430,61 @@ class ISPLetterGenerator:
                 for run in paragraph.runs:
                     run.font.size = Pt(size_pt)
 
+    def _substitute_paragraph(self, paragraph, values: dict) -> None:
+        """Replace {tokens} in a paragraph, collapsing into the first run."""
+        if not paragraph.runs:
+            return
+        full = "".join(run.text for run in paragraph.runs)
+        if "{" not in full:
+            return
+        new = substitute(full, values)
+        if new == full:
+            return
+        paragraph.runs[0].text = new
+        for run in paragraph.runs[1:]:
+            run.text = ""
+
+    def render_docx_template(self, docx_bytes: bytes, isp_name: str,
+                             ip_data: pd.DataFrame, case_details: dict) -> Document:
+        """Render an uploaded .docx: substitute {tokens} and inject the IP table.
+
+        The per-ISP IP table is inserted where a paragraph reading exactly
+        ``{ip_table}`` appears; if no such marker exists, it is appended at the end.
+        """
+        values = dict(case_details)
+        values["isp_name"] = isp_name
+
+        doc = Document(io.BytesIO(docx_bytes))
+
+        # Substitute tokens in body paragraphs and inside any table cells.
+        for paragraph in doc.paragraphs:
+            self._substitute_paragraph(paragraph, values)
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for paragraph in cell.paragraphs:
+                        self._substitute_paragraph(paragraph, values)
+
+        # Locate the {ip_table} marker paragraph (token is not a placeholder, so it survives substitution).
+        marker = next((p for p in doc.paragraphs if p.text.strip() == "{ip_table}"), None)
+        if marker is not None:
+            self._build_ip_table(doc, isp_name, ip_data)
+            # _build_ip_table appends the table at the end; move it before the marker, then drop the marker.
+            table_el = doc.tables[-1]._tbl
+            marker._p.addprevious(table_el)
+            marker._p.getparent().remove(marker._p)
+        else:
+            self._build_ip_table(doc, isp_name, ip_data)
+
+        return doc
+
     def generate_letter(self, isp_name: str, ip_data: pd.DataFrame,
                         case_details: dict, template: dict = None) -> Document:
         """Generate a letter for one ISP using the given template (or the default)."""
         from utils.letter_template import DEFAULT_TEMPLATE
+        if template and template.get("kind") == "docx" and template.get("docx_b64"):
+            return self.render_docx_template(base64.b64decode(template["docx_b64"]),
+                                             isp_name, ip_data, case_details)
         return self.render_template_to_docx(template or DEFAULT_TEMPLATE,
                                             isp_name, ip_data, case_details)
 
