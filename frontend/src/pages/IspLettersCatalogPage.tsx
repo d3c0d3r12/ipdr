@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiRequest, API_BASE } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { listTemplates, LetterTemplate } from '../lib/templates'
 
 type IspEntry = { isp: string; count: number }
 type CaseEntry = {
@@ -49,6 +50,8 @@ export default function IspLettersCatalogPage() {
   const [filter, setFilter] = useState('')
   const [busy, setBusy] = useState<string | null>(null) // `${fir}:ALL` or `${fir}:${isp}`
   const [formOpen, setFormOpen] = useState(false)
+  const [templates, setTemplates] = useState<LetterTemplate[]>([])
+  const [templateId, setTemplateId] = useState('')
 
   const [form, setForm] = useState<LetterForm>({
     fir_date: 'N/A',
@@ -73,12 +76,21 @@ export default function IspLettersCatalogPage() {
 
   useEffect(() => { load() }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    listTemplates(token).then(r => {
+      const list = r.data?.templates ?? []
+      setTemplates(list)
+      setTemplateId((list.find(t => t.name === 'IFSO Dwarka Default') || list[0])?.id ?? '')
+    })
+  }, [token])
+
   const setField = (k: keyof LetterForm, v: string) => setForm(p => ({ ...p, [k]: v }))
 
   const payloadFor = (fir: string) => {
     const fd = new FormData()
     fd.append('fir_number', fir)
     Object.entries({ ...form, ...FIXED_FIELDS }).forEach(([k, v]) => fd.append(k, String(v)))
+    if (templateId) fd.append('template_id', templateId)
     return fd
   }
 
@@ -152,6 +164,17 @@ export default function IspLettersCatalogPage() {
             ))}
           </div>
         )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          <label className="muted" style={{ fontSize: 12 }}>Letter template</label>
+          <select value={templateId} onChange={e => setTemplateId(e.target.value)} style={{ minWidth: 220 }}>
+            {templates.map(t => (
+              <option key={t.id} value={t.id}>
+                {t.name}{t.scope === 'system' ? ' (default)' : t.scope === 'shared' ? ' (shared)' : ''}
+              </option>
+            ))}
+          </select>
+          <a href="/isp-letters/templates" className="muted" style={{ fontSize: 11 }}>Edit templates →</a>
+        </div>
         <p className="muted" style={{ fontSize: 11, marginTop: formOpen ? 10 : 6, marginBottom: 0 }}>
           These details apply to every letter. The FIR number is filled automatically per case.
         </p>

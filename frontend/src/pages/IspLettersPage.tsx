@@ -1,6 +1,7 @@
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { API_BASE, apiRequest } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { listTemplates, LetterTemplate } from '../lib/templates'
 
 // These fields never change — hardcoded, not shown to user
 const FIXED_FIELDS = {
@@ -72,6 +73,8 @@ export default function IspLettersPage() {
   const { token } = useAuth()
   const [zipFile, setZipFile] = useState<File | null>(null)
   const [form, setForm] = useState<FormState>(initialState)
+  const [templates, setTemplates] = useState<LetterTemplate[]>([])
+  const [templateId, setTemplateId] = useState('')
   const [detectedIsps, setDetectedIsps] = useState<DetectedIsp[]>([])
   const [detecting, setDetecting] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -79,6 +82,14 @@ export default function IspLettersPage() {
   const [success, setSuccess] = useState('')
 
   const F = (key: keyof FormState) => (v: string) => setForm(f => ({ ...f, [key]: v }))
+
+  useEffect(() => {
+    listTemplates(token).then(r => {
+      const list = r.data?.templates ?? []
+      setTemplates(list)
+      setTemplateId((list.find(t => t.name === 'IFSO Dwarka Default') || list[0])?.id ?? '')
+    })
+  }, [token])
 
   const detectIsps = async () => {
     if (!zipFile) return
@@ -114,6 +125,7 @@ export default function IspLettersPage() {
     Object.entries(form).forEach(([k, v]) => fd.append(k, v))
     // Fixed fields — sent silently
     Object.entries(FIXED_FIELDS).forEach(([k, v]) => fd.append(k, v))
+    if (templateId) fd.append('template_id', templateId)
 
     try {
       const response = await fetch(`${API_BASE}/api/generate-isp-letters`, {
@@ -283,6 +295,17 @@ export default function IspLettersPage() {
                   placeholder="e.g. Cyber Police Station, New Delhi" />
               </div>
             </div>
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <label>Letter template</label>
+            <select value={templateId} onChange={e => setTemplateId(e.target.value)} style={{ width: '100%' }}>
+              {templates.map(t => (
+                <option key={t.id} value={t.id}>
+                  {t.name}{t.scope === 'system' ? ' (default)' : t.scope === 'shared' ? ' (shared)' : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           {error && <div className="alert error" style={{ marginBottom: 12 }}>{error}</div>}

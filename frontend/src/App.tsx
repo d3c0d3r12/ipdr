@@ -15,6 +15,7 @@ import FirDetailsPage from './pages/FirDetailsPage'
 import MultiFileUploadPage from './pages/MultiFileUploadPage'
 import ReportCreationPage from './pages/ReportCreationPage'
 import IspLettersCatalogPage from './pages/IspLettersCatalogPage'
+import TemplateBuilderPage from './pages/TemplateBuilderPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import PlaceholderPage from './pages/PlaceholderPage'
 
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="/multi-file-upload" element={<ProtectedLayout><MultiFileUploadPage /></ProtectedLayout>} />
         <Route path="/report-creation" element={<ProtectedLayout><ReportCreationPage /></ProtectedLayout>} />
         <Route path="/isp-letters" element={<ProtectedLayout><IspLettersCatalogPage /></ProtectedLayout>} />
+        <Route path="/isp-letters/templates" element={<ProtectedLayout><TemplateBuilderPage /></ProtectedLayout>} />
         <Route path="/admin/users" element={<AdminLayout><AdminUsersPage /></AdminLayout>} />
         <Route path="/profile" element={<ProtectedLayout><PlaceholderPage title="Profile" /></ProtectedLayout>} />
         <Route path="/settings" element={<ProtectedLayout><PlaceholderPage title="Settings" /></ProtectedLayout>} />

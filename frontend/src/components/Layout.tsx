@@ -18,6 +18,7 @@ const navItems: NavItem[] = [
   { to: '/analytics',        label: 'Analytics',    icon: 'analytics',  section: 'analyze' },
   { to: '/map',              label: 'Geo Map',      icon: 'map',        section: 'analyze' },
   { to: '/isp-letters',      label: 'ISP Letters',  icon: 'letters',    section: 'reports' },
+  { to: '/isp-letters/templates', label: 'Letter Templates', icon: 'reports', section: 'reports' },
   { to: '/admin/users',      label: 'User Approvals', icon: 'users',    section: 'admin', adminOnly: true },
 ]
 
@@ -60,6 +61,7 @@ function pageTitleFor(pathname: string): string {
     '/map':               'Geo Intelligence',
     '/report-creation':   'Generate Reports',
     '/isp-letters':       'ISP Letters',
+    '/isp-letters/templates': 'Letter Templates',
     '/admin/users':       'User Approvals',
     '/profile':           'Profile',
     '/settings':          'Settings',
@@ -124,7 +126,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               style={{
                 width: 44, height: 44,
                 objectFit: 'contain',
-                filter: 'drop-shadow(0 0 8px rgba(0,229,255,0.45)) brightness(1.05)',
                 flexShrink: 0,
               }}
             />
@@ -132,6 +133,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <span className="brand-name">IPDR HUB</span>
               <span className="brand-sub">Delhi Police · Cyber Cell</span>
             </div>
+          </div>
+          <div style={{
+            marginTop: 8,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '1.5px',
+            textTransform: 'uppercase',
+            color: 'var(--cyan)',
+            textAlign: 'center',
+          }}>
+            IFSO Delhi Police
           </div>
         </div>
 
@@ -170,7 +182,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             borderTop: '1px solid var(--border)', paddingTop: 10,
           }}>
             <div>IPDR Intelligence Platform</div>
-            <div>© Delhi Police Cyber Cell</div>
+            <div>© IFSO Delhi Police Cyber Cell</div>
           </div>
         </div>
       </aside>
