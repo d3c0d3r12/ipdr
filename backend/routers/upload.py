@@ -78,6 +78,8 @@ async def upload_file(
 		bypass_cloudflare: If True, use Cloudflare bypass for unlimited InfoByIP access
 		background: Background tasks handler
 	"""
+	# Capture user_id for ownership tracking
+	user_id = str(_user["_id"])
 	# Security: Validate filename
 	if not file.filename:
 		raise HTTPException(status_code=400, detail="Filename is required")
@@ -190,7 +192,9 @@ async def upload_file(
 		f"Bypass Cloudflare: {'Yes' if bypass_cloudflare else 'No'}\n"
 		f"Total Records: {len(rows)}\n"
 		f"Unique IPs: {len(set(ips))}\n"
-		f"Timestamp: {ts}\n",
+		f"Timestamp: {ts}\n"
+		f"User ID: {user_id}\n"
+		f"Username: {_user.get('username', '')}\n",
 		encoding='utf-8'
 	)
 	

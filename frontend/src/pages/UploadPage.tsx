@@ -99,22 +99,22 @@ const _BB_ISP     = ['act fibernet', 'hathway', 'excitel', 'you broadband', 'den
 
 function ispCategory(isp: string): { label: string; color: string; bg: string; border: string } {
   const l = isp.toLowerCase()
-  if (_MOBILE_ISP.some(k => l.includes(k))) return { label: 'Mobile/Telecom', color: 'var(--cyan)',   bg: 'rgba(0,229,255,0.08)',  border: 'rgba(0,229,255,0.25)' }
-  if (_VPS_ISP.some(k => l.includes(k)))    return { label: 'VPS/Hosting',    color: 'var(--orange)', bg: 'rgba(255,153,51,0.08)', border: 'rgba(255,153,51,0.25)' }
-  if (_BB_ISP.some(k => l.includes(k)))     return { label: 'Broadband',      color: 'var(--green)',  bg: 'rgba(0,255,136,0.08)',  border: 'rgba(0,255,136,0.25)' }
-  return { label: 'ISP', color: 'var(--muted)', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)' }
+  if (_MOBILE_ISP.some(k => l.includes(k))) return { label: 'Mobile/Telecom', color: 'var(--cyan)',   bg: 'rgba(37,99,235,0.08)',  border: 'rgba(37,99,235,0.2)' }
+  if (_VPS_ISP.some(k => l.includes(k)))    return { label: 'VPS/Hosting',    color: 'var(--orange)', bg: 'rgba(234,88,12,0.08)',  border: 'rgba(234,88,12,0.2)' }
+  if (_BB_ISP.some(k => l.includes(k)))     return { label: 'Broadband',      color: 'var(--green)',  bg: 'rgba(22,163,74,0.08)',  border: 'rgba(22,163,74,0.2)' }
+  return { label: 'ISP', color: 'var(--muted)', bg: '#f3f4f6', border: 'var(--border)' }
 }
 
 function typeBadge(ipType: string | undefined, isTor: boolean | undefined): { label: string; color: string; bg: string } {
-  if (isTor || ipType === 'TOR') return { label: 'TOR',      color: '#ff3366', bg: 'rgba(255,51,102,0.12)' }
+  if (isTor || ipType === 'TOR') return { label: 'TOR',      color: '#dc2626', bg: 'rgba(220,38,38,0.08)' }
   switch (ipType) {
-    case 'VPN':         return { label: 'VPN',      color: 'var(--orange)', bg: 'rgba(255,153,51,0.12)' }
-    case 'VPS':         return { label: 'VPS',       color: '#ff7b1a',       bg: 'rgba(255,123,26,0.12)' }
-    case 'Datacenter':  return { label: 'VPS',       color: '#ff7b1a',       bg: 'rgba(255,123,26,0.12)' }
-    case 'Mobile':      return { label: 'Mobile',    color: 'var(--cyan)',   bg: 'rgba(0,229,255,0.1)'   }
-    case 'Residential': return { label: 'Broadband', color: 'var(--green)',  bg: 'rgba(0,255,136,0.1)'   }
-    case 'IPv6':        return { label: 'IPv6',       color: 'var(--purple)', bg: 'rgba(155,89,255,0.1)'  }
-    default:            return { label: ipType || 'IPv4', color: 'var(--muted)', bg: 'rgba(255,255,255,0.05)' }
+    case 'VPN':         return { label: 'VPN',      color: 'var(--orange)', bg: 'rgba(234,88,12,0.08)' }
+    case 'VPS':         return { label: 'VPS',       color: '#ea580c',       bg: 'rgba(234,88,12,0.08)' }
+    case 'Datacenter':  return { label: 'VPS',       color: '#ea580c',       bg: 'rgba(234,88,12,0.08)' }
+    case 'Mobile':      return { label: 'Mobile',    color: 'var(--cyan)',   bg: 'rgba(37,99,235,0.08)' }
+    case 'Residential': return { label: 'Broadband', color: 'var(--green)',  bg: 'rgba(22,163,74,0.08)' }
+    case 'IPv6':        return { label: 'IPv6',       color: 'var(--purple)', bg: 'rgba(124,58,237,0.08)' }
+    default:            return { label: ipType || 'IPv4', color: 'var(--muted)', bg: '#f3f4f6' }
   }
 }
 
@@ -430,13 +430,13 @@ export default function UploadPage() {
               <div key={s.n} style={{ display: 'flex', alignItems: 'center' }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 7, padding: '7px 13px', borderRadius: 8,
-                  background: s.active ? 'rgba(0,229,255,0.07)' : s.done ? 'rgba(0,255,136,0.06)' : 'rgba(255,255,255,0.02)',
-                  border: `1px solid ${s.active ? 'rgba(0,229,255,0.3)' : s.done ? 'rgba(0,255,136,0.28)' : 'var(--border)'}`,
+                  background: s.active ? 'rgba(37,99,235,0.06)' : s.done ? 'rgba(22,163,74,0.06)' : '#f9fafb',
+                  border: `1px solid ${s.active ? 'rgba(37,99,235,0.25)' : s.done ? 'rgba(22,163,74,0.2)' : 'var(--border)'}`,
                 }}>
                   <div style={{
                     width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700,
-                    background: s.done ? 'rgba(0,255,136,0.15)' : s.active ? 'rgba(0,229,255,0.15)' : 'rgba(255,255,255,0.05)',
+                    background: s.done ? 'rgba(22,163,74,0.1)' : s.active ? 'rgba(37,99,235,0.1)' : '#f3f4f6',
                     color: s.done ? 'var(--green)' : s.active ? 'var(--cyan)' : 'var(--muted)',
                   }}>{s.done ? '✓' : s.n}</div>
                   <span style={{ fontSize: 12, fontWeight: s.active ? 600 : 500, color: s.active ? 'var(--text-bright)' : s.done ? 'var(--green)' : 'var(--muted)' }}>{s.label}</span>
@@ -452,14 +452,14 @@ export default function UploadPage() {
           {!selectedCase ? (
             <div className="card" style={{ marginBottom: 0 }}>
               <h2 style={{ marginBottom: 14 }}>Step 1 — FIR Case</h2>
-              <div style={{ display: 'flex', gap: 5, marginBottom: 14, background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 4 }}>
+              <div style={{ display: 'flex', gap: 5, marginBottom: 14, background: '#f3f4f6', borderRadius: 8, padding: 4 }}>
                 {(['select', 'create'] as CaseMode[]).map(m => (
                   <button key={m} type="button" onClick={() => { setCaseMode(m); setCaseError('') }} style={{
                     flex: 1, padding: '7px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
                     border: 'none', transition: 'all 0.15s',
-                    background: caseMode === m ? (m === 'create' ? 'rgba(0,229,255,0.15)' : 'rgba(155,89,255,0.15)') : 'transparent',
+                    background: caseMode === m ? (m === 'create' ? 'rgba(37,99,235,0.1)' : 'rgba(124,58,237,0.1)') : 'transparent',
                     color: caseMode === m ? (m === 'create' ? 'var(--cyan)' : 'var(--purple)') : 'var(--muted)',
-                    boxShadow: caseMode === m ? `0 0 0 1px ${m === 'create' ? 'rgba(0,229,255,0.3)' : 'rgba(155,89,255,0.3)'}` : 'none',
+                    boxShadow: caseMode === m ? `0 0 0 1px ${m === 'create' ? 'rgba(37,99,235,0.2)' : 'rgba(124,58,237,0.2)'}` : 'none',
                   }}>{m === 'select' ? '📂 Select Existing' : '✚ Create New'}</button>
                 ))}
               </div>
@@ -476,10 +476,10 @@ export default function UploadPage() {
                             <button key={c.fir_number} type="button" onClick={() => confirmSelectCase(c)} style={{
                               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                               padding: '10px 12px', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
-                              background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', transition: 'border-color 0.15s, background 0.15s',
+                              background: '#ffffff', border: '1px solid var(--border)', transition: 'border-color 0.15s, background 0.15s',
                             }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(155,89,255,0.4)'; (e.currentTarget as HTMLElement).style.background = 'rgba(155,89,255,0.05)' }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.02)' }}>
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(124,58,237,0.3)'; (e.currentTarget as HTMLElement).style.background = 'rgba(124,58,237,0.04)' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.background = '#ffffff' }}>
                               <div>
                                 <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: 'var(--purple)', marginBottom: 2 }}>{c.fir_number}</div>
                                 <div style={{ fontSize: 12, color: 'var(--text-bright)', fontWeight: 500 }}>{c.case_title}</div>
@@ -515,7 +515,7 @@ export default function UploadPage() {
               )}
             </div>
           ) : (
-            <div className="card" style={{ marginBottom: 0, borderColor: 'rgba(155,89,255,0.3)', background: 'rgba(155,89,255,0.04)' }}>
+            <div className="card" style={{ marginBottom: 0, borderColor: 'rgba(124,58,237,0.2)', background: 'rgba(124,58,237,0.03)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
                 <div>
                   <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 4 }}>Active Case</div>
@@ -572,9 +572,9 @@ export default function UploadPage() {
       ══════════════════════════════════════════════════════════════ */}
       {busy && (
         <div style={{ maxWidth: 620, margin: '32px auto' }}>
-          <div className="card" style={{ borderColor: 'rgba(0,229,255,0.2)' }}>
+          <div className="card" style={{ borderColor: 'rgba(37,99,235,0.2)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(0,229,255,0.08)', border: '1px solid rgba(0,229,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Spinner color="var(--cyan)" />
               </div>
               <div>
@@ -617,7 +617,7 @@ export default function UploadPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             gap: 12, flexWrap: 'wrap', marginBottom: 14,
             padding: '11px 16px', borderRadius: 10,
-            background: 'rgba(0,255,136,0.04)', border: '1px solid rgba(0,255,136,0.12)',
+            background: 'rgba(22,163,74,0.04)', border: '1px solid rgba(22,163,74,0.15)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               {/* Case badge */}
@@ -633,7 +633,7 @@ export default function UploadPage() {
                 <StatPill label="Entries" value={summary.total_records} />
                 <StatPill label="Unique IPs" value={summary.total_unique_ips} />
                 <StatPill label="Repeated" value={summary.shared_ips?.length || 0} />
-                {(summary.tor_count ?? 0) > 0 && <StatPill label="TOR" value={summary.tor_count!} color="var(--red)" bg="rgba(255,51,102,0.1)" border="rgba(255,51,102,0.25)" />}
+                {(summary.tor_count ?? 0) > 0 && <StatPill label="TOR" value={summary.tor_count!} color="var(--red)" bg="rgba(220,38,38,0.06)" border="rgba(220,38,38,0.2)" />}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -738,7 +738,7 @@ export default function UploadPage() {
                       {results.map((r, i) => {
                         const badge = typeBadge(r.ip_type, r.is_tor)
                         return (
-                          <tr key={r.ip} onClick={() => setSelected(selected?.ip === r.ip ? null : r)} style={{ cursor: 'pointer', background: r.is_tor ? 'rgba(255,51,102,0.04)' : selected?.ip === r.ip ? 'rgba(0,229,255,0.04)' : undefined }}>
+                          <tr key={r.ip} onClick={() => setSelected(selected?.ip === r.ip ? null : r)} style={{ cursor: 'pointer', background: r.is_tor ? 'rgba(220,38,38,0.04)' : selected?.ip === r.ip ? 'rgba(37,99,235,0.04)' : undefined }}>
                             <td style={{ color: 'var(--muted)', fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }}>{(resultsPage - 1) * RESULTS_PAGE_SIZE + i + 1}</td>
                             <td style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: r.is_tor ? 'var(--red)' : 'var(--cyan)' }}>{r.ip}</td>
                             <td style={{ fontSize: 12, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.isp || '—'}</td>
@@ -769,7 +769,7 @@ export default function UploadPage() {
 
                 {/* Detail pane */}
                 {selected && (
-                  <div style={{ background: 'rgba(0,229,255,0.03)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
+                  <div style={{ background: '#f9fafb', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                       {(() => { const b = typeBadge(selected.ip_type, selected.is_tor); return <span style={{ padding: '3px 8px', borderRadius: 5, fontSize: 10, fontWeight: 700, color: b.color, background: b.bg }}>{b.label}</span> })()}
                       <span style={{ fontFamily: 'Orbitron, monospace', fontSize: 12, color: selected.is_tor ? 'var(--red)' : 'var(--cyan)', fontWeight: 700 }}>{selected.ip}</span>
@@ -820,20 +820,20 @@ function IspBreakdownTable({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <h2 style={{ margin: 0 }}>ISP Breakdown</h2>
-          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: 'var(--muted)', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 5, padding: '2px 7px' }}>
+          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: 'var(--muted)', background: '#f3f4f6', border: '1px solid var(--border)', borderRadius: 5, padding: '2px 7px' }}>
             {rows.length} ISPs
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {/* TOR count badge */}
           {(torCount ?? 0) > 0 && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 6, background: 'rgba(255,51,102,0.1)', border: '1px solid rgba(255,51,102,0.3)', fontSize: 11, fontWeight: 700, color: 'var(--red)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 6, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)', fontSize: 11, fontWeight: 700, color: 'var(--red)' }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.2"/><path d="M12 8v5M12 16v.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
               {torCount} TOR exit IPs
             </span>
           )}
           {torListLoaded === false && (
-            <span style={{ padding: '3px 9px', borderRadius: 6, background: 'rgba(255,153,51,0.08)', border: '1px solid rgba(255,153,51,0.2)', fontSize: 10, color: 'var(--orange)' }}>
+            <span style={{ padding: '3px 9px', borderRadius: 6, background: 'rgba(234,88,12,0.06)', border: '1px solid rgba(234,88,12,0.2)', fontSize: 10, color: 'var(--orange)' }}>
               TOR list not loaded — run update_tor_list.py
             </span>
           )}
@@ -894,7 +894,7 @@ function IspBreakdownTable({
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                       <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: 'var(--text-bright)', flexShrink: 0, minWidth: 28, textAlign: 'right' }}>{r.count}</span>
-                      <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden', minWidth: 40 }}>
+                      <div style={{ flex: 1, height: 5, background: '#f3f4f6', borderRadius: 3, overflow: 'hidden', minWidth: 40 }}>
                         <div style={{ height: '100%', width: `${barPct}%`, background: cat.color, borderRadius: 3, transition: 'width 0.4s ease', opacity: 0.75 }} />
                       </div>
                       <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: 'var(--muted)', flexShrink: 0, minWidth: 32, textAlign: 'right' }}>{pct.toFixed(1)}%</span>
@@ -923,7 +923,7 @@ function IspBreakdownTable({
   )
 }
 
-function StatPill({ label, value, color = 'var(--text-bright)', bg = 'rgba(255,255,255,0.04)', border = 'var(--border)' }: {
+function StatPill({ label, value, color = 'var(--text-bright)', bg = '#f3f4f6', border = 'var(--border)' }: {
   label: string; value: number; color?: string; bg?: string; border?: string
 }) {
   return (

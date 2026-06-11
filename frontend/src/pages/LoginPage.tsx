@@ -27,25 +27,6 @@ export default function LoginPage() {
 
   return (
     <div className="centered-page">
-      {/* Floating particles */}
-      <div style={{
-        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden',
-      }}>
-        {[...Array(14)].map((_, i) => (
-          <span key={i} style={{
-            position: 'absolute',
-            left: `${(i * 7.3 + 5) % 100}%`,
-            top: `${(i * 13.7 + 10) % 100}%`,
-            width: i % 3 === 0 ? 3 : 2,
-            height: i % 3 === 0 ? 3 : 2,
-            borderRadius: '50%',
-            background: i % 2 === 0 ? 'rgba(0,229,255,0.5)' : 'rgba(155,89,255,0.4)',
-            boxShadow: `0 0 ${i % 3 === 0 ? 8 : 4}px ${i % 2 === 0 ? 'rgba(0,229,255,0.7)' : 'rgba(155,89,255,0.6)'}`,
-            animation: `blink ${2 + (i % 3)}s ease-in-out ${(i * 0.4)}s infinite`,
-          }} />
-        ))}
-      </div>
-
       <form className="card" onSubmit={onSubmit} style={{ position: 'relative', zIndex: 1 }}>
         {/* Logo / Brand */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -54,17 +35,26 @@ export default function LoginPage() {
             width: 56, height: 56,
             margin: '0 auto 14px',
             borderRadius: 14,
-            background: 'linear-gradient(135deg, rgba(0,229,255,0.15), rgba(155,89,255,0.1))',
-            border: '1px solid rgba(0,229,255,0.3)',
-            boxShadow: '0 0 30px rgba(0,229,255,0.2)',
+            background: 'linear-gradient(135deg, rgba(37,99,235,0.08), rgba(124,58,237,0.06))',
+            border: '1px solid rgba(37,99,235,0.2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
               <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5Z"
                 stroke="var(--cyan)" strokeWidth="1.8" strokeLinejoin="round"
-                fill="rgba(0,229,255,0.07)" />
+                fill="rgba(37,99,235,0.07)" />
               <path d="m9 12 2 2 4-4" stroke="var(--cyan)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
+          </div>
+          <div style={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '2px',
+            textTransform: 'uppercase',
+            color: 'var(--cyan)',
+            marginBottom: 8,
+          }}>
+            IFSO Delhi Police
           </div>
           <h1 style={{ marginBottom: 4 }}>IPDR COMMAND</h1>
           <p className="muted" style={{ fontSize: 11, letterSpacing: '2px', textTransform: 'uppercase', margin: 0 }}>
@@ -75,7 +65,7 @@ export default function LoginPage() {
         {/* Divider */}
         <div style={{
           height: 1, marginBottom: 20,
-          background: 'linear-gradient(90deg, transparent, rgba(0,229,255,0.25), transparent)',
+          background: 'linear-gradient(90deg, transparent, var(--border-bright), transparent)',
         }} />
 
         {/* Username */}

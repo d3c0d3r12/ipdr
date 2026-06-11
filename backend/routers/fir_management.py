@@ -24,6 +24,15 @@ from routers.auth_secure import get_current_user
 router = APIRouter()
 
 
+def _check_fir_access(fir_case: dict, current_user: dict) -> None:
+    """Raise 403 if non-admin user tries to access another user's case."""
+    if current_user.get("role") == "admin":
+        return
+    owner = fir_case.get("user_id")
+    if owner and owner != str(current_user["_id"]):
+        raise HTTPException(status_code=403, detail="Access denied — this case belongs to another user")
+
+
 def _find_latest_run_for_fir(fir_number: str) -> Optional[Path]:
     """Locate the most recent processed run directory belonging to a FIR.
 
@@ -103,6 +112,7 @@ async def create_fir(
         department=current_user.get("department"),
         priority=request.priority,
         status="active",
+        user_id=str(current_user["_id"]),
     )
     result = await db[FIR_CASES_COLLECTION].insert_one(doc)
     doc["_id"] = result.inserted_id
@@ -136,6 +146,7 @@ async def store_ip_results(
     fir_case = FIRService.get_fir_case(db, full_fir_number)
     if not fir_case:
         raise HTTPException(status_code=404, detail="FIR case not found")
+    _check_fir_access(fir_case, current_user)
     
     temp_dir = Path("temp_uploads")
     temp_dir.mkdir(exist_ok=True)
@@ -190,6 +201,14 @@ async def list_fir_cases(
     query_filter = {}
     if status:
         query_filter["status"] = status
+
+    # Non-admin users can only see their own cases
+    if current_user.get("role") != "admin":
+        query_filter["$or"] = [
+            {"user_id": str(current_user["_id"])},
+            {"user_id": {"$exists": False}},
+            {"user_id": None},
+        ]
     
     # Get FIR cases
     cursor = db[FIR_CASES_COLLECTION].find(query_filter).sort("created_at", -1).skip(offset).limit(limit)
@@ -242,6 +261,7 @@ async def get_fir_ip_lookups(
     fir_case = await db[FIR_CASES_COLLECTION].find_one({"fir_number": fir_number})
     if not fir_case:
         raise HTTPException(status_code=404, detail="FIR case not found")
+    _check_fir_access(fir_case, current_user)
 
     run = _find_latest_run_for_fir(fir_number)
     if run is None:
@@ -293,6 +313,11 @@ async def get_fir_statistics(
     db=Depends(get_session)
 ):
     """Get statistics for a FIR from its latest processed run on disk."""
+    # Access control: verify user owns this FIR
+    fir_case = await db[FIR_CASES_COLLECTION].find_one({"fir_number": fir_number})
+    if fir_case:
+        _check_fir_access(fir_case, current_user)
+
     empty = {
         "fir_number": fir_number,
         "total_ip_lookups": 0,
@@ -369,6 +394,7 @@ async def get_fir_timeline(
     fir_case = await db[FIR_CASES_COLLECTION].find_one({"fir_number": fir_number})
     if not fir_case:
         raise HTTPException(status_code=404, detail="FIR case not found")
+    _check_fir_access(fir_case, current_user)
     
     investigations = await db[INVESTIGATIONS_COLLECTION].find(
         {"fir_number": fir_number}
@@ -420,6 +446,7 @@ async def get_fir_details(
     fir_case = await db[FIR_CASES_COLLECTION].find_one({"fir_number": fir_number})
     if not fir_case:
         raise HTTPException(status_code=404, detail="FIR case not found")
+    _check_fir_access(fir_case, current_user)
     
     investigations = await db[INVESTIGATIONS_COLLECTION].find(
         {"fir_number": fir_number}

@@ -170,17 +170,17 @@ export default function DashboardPage() {
             <a href={step.to} style={{
               display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none',
               padding: '10px 16px',
-              background: 'rgba(0,229,255,0.03)',
+              background: '#f9fafb',
               border: '1px solid var(--border)',
               borderRadius: 8, transition: 'border-color 0.15s',
             }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(0,229,255,0.35)')}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(37,99,235,0.3)')}
               onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
             >
               <span style={{
                 width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'rgba(0,229,255,0.1)', border: '1px solid rgba(0,229,255,0.25)',
+                background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)',
                 color: 'var(--cyan)', fontSize: 11, fontWeight: 700,
               }}>{step.n}</span>
               <div>
@@ -348,14 +348,14 @@ export default function DashboardPage() {
         padding: '10px 14px',
         border: '1px solid var(--border)',
         borderRadius: 10,
-        background: 'rgba(0,229,255,0.02)',
+        background: '#f9fafb',
         fontSize: 11, color: 'var(--muted)',
       }}>
         <span>
           <span style={{ color: 'var(--green)', marginRight: 6 }}>●</span>
           System Operational
         </span>
-        <span>Delhi Police Cyber Cell · IPDR Intelligence Platform</span>
+        <span>IFSO Delhi Police Cyber Cell · IPDR Intelligence Platform</span>
         <span style={{ marginLeft: 'auto' }}>
           Total Records:{' '}
           <span style={{ color: 'var(--cyan)', fontFamily: 'JetBrains Mono, monospace' }}>

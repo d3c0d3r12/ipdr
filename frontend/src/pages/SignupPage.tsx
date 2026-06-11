@@ -31,7 +31,7 @@ export default function SignupPage() {
   }, [form.password])
 
   const strengthLabel = ['', 'Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'][strength] ?? ''
-  const strengthColor = ['', '#ff3366', '#ff9933', '#ffd700', '#00ff88', '#00e5ff'][strength] ?? ''
+  const strengthColor = ['', '#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#2563eb'][strength] ?? ''
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -75,16 +75,15 @@ export default function SignupPage() {
           <div style={{
             width: 50, height: 50, margin: '0 auto 12px',
             borderRadius: 12,
-            background: 'linear-gradient(135deg, rgba(155,89,255,0.15), rgba(0,229,255,0.1))',
-            border: '1px solid rgba(155,89,255,0.3)',
-            boxShadow: '0 0 28px rgba(155,89,255,0.18)',
+            background: 'linear-gradient(135deg, rgba(124,58,237,0.08), rgba(37,99,235,0.06))',
+            border: '1px solid rgba(124,58,237,0.2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M19 8v6M22 11h-6" stroke="var(--purple)" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
           </div>
-          <h1 style={{ color: 'var(--purple)', textShadow: '0 0 24px rgba(155,89,255,0.6)', marginBottom: 4 }}>
+          <h1 style={{ color: 'var(--purple)', marginBottom: 4 }}>
             REQUEST ACCESS
           </h1>
           <p className="muted" style={{ fontSize: 11, letterSpacing: '2px', textTransform: 'uppercase', margin: 0 }}>
@@ -92,7 +91,7 @@ export default function SignupPage() {
           </p>
         </div>
 
-        <div style={{ height: 1, marginBottom: 20, background: 'linear-gradient(90deg, transparent, rgba(155,89,255,0.25), transparent)' }} />
+        <div style={{ height: 1, marginBottom: 20, background: 'linear-gradient(90deg, transparent, var(--border-bright), transparent)' }} />
 
         <div style={{ display: 'grid', gap: 12 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -120,9 +119,8 @@ export default function SignupPage() {
                   {[1,2,3,4,5].map(i => (
                     <div key={i} style={{
                       flex: 1, height: 3, borderRadius: 999,
-                      background: i <= strength ? strengthColor : 'rgba(255,255,255,0.06)',
+                      background: i <= strength ? strengthColor : '#e5e7eb',
                       transition: 'background 200ms',
-                      boxShadow: i <= strength ? `0 0 6px ${strengthColor}` : 'none',
                     }} />
                   ))}
                 </div>

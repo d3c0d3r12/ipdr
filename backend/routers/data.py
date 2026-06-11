@@ -32,6 +32,9 @@ def _iter_processed_runs():
 @router.get("/")
 def get_records(run_dir: str = Query(None), limit: int = Query(100), _user: dict = Depends(get_current_user)):
 	"""Provides data to frontend (for table, charts, etc.)"""
+	is_admin = _user.get("role") == "admin"
+	user_id = str(_user["_id"])
+
 	if run_dir:
 		run = _resolve_run_dir(run_dir)
 		if not run.exists():
@@ -56,7 +59,17 @@ def get_records(run_dir: str = Query(None), limit: int = Query(100), _user: dict
 		records = []
 		seen_runs: set = set()
 		db = get_db()
-		for fc in db[FIR_CASES_COLLECTION].find({}, {"fir_number": 1}):
+
+		# Build query filter for user ownership
+		fir_query = {}
+		if not is_admin:
+			fir_query["$or"] = [
+				{"user_id": user_id},
+				{"user_id": {"$exists": False}},
+				{"user_id": None},
+			]
+
+		for fc in db[FIR_CASES_COLLECTION].find(fir_query, {"fir_number": 1}):
 			if len(records) >= limit:
 				break
 			run = _find_latest_run_for_fir(fc.get("fir_number", ""))
@@ -132,13 +145,26 @@ def get_summary(run_dir: str = Query(None), _user: dict = Depends(get_current_us
 		from routers.fir_management import _find_latest_run_for_fir
 		from models.fir_case import FIR_CASES_COLLECTION
 
+		is_admin = _user.get("role") == "admin"
+		user_id = str(_user["_id"])
+
 		total = 0
 		countries: set = set()
 		cities: set = set()
 		seen_runs: set = set()
 
 		db = get_db()
-		for fc in db[FIR_CASES_COLLECTION].find({}, {"fir_number": 1}):
+
+		# Build query filter for user ownership
+		fir_query = {}
+		if not is_admin:
+			fir_query["$or"] = [
+				{"user_id": user_id},
+				{"user_id": {"$exists": False}},
+				{"user_id": None},
+			]
+
+		for fc in db[FIR_CASES_COLLECTION].find(fir_query, {"fir_number": 1}):
 			run = _find_latest_run_for_fir(fc.get("fir_number", ""))
 			if run is None or run.name in seen_runs:
 				continue

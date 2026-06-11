@@ -15,6 +15,7 @@ FIR_TIMELINE_COLLECTION = "fir_timeline"
 INDEXES = {
     FIR_CASES_COLLECTION: [
         {"keys": "fir_number", "unique": True},
+        {"keys": "user_id"},
     ],
     FIR_IP_LOOKUPS_COLLECTION: [
         {"keys": "fir_number"},
@@ -35,7 +36,7 @@ INDEXES = {
 
 def new_fir_case(*, fir_number, case_title=None, case_description=None,
                  investigating_officer=None, department=None,
-                 status="active", priority="medium", **extra):
+                 status="active", priority="medium", user_id=None, **extra):
     return {
         "fir_number": fir_number,
         "case_title": case_title,
@@ -44,6 +45,7 @@ def new_fir_case(*, fir_number, case_title=None, case_description=None,
         "department": department,
         "status": status,
         "priority": priority,
+        "user_id": user_id,
         "created_at": datetime.now(timezone.utc),
         "updated_at": None,
         "closed_at": None,
