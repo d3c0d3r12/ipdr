@@ -1057,7 +1057,10 @@ async def generate_isp_letters(
     officer_designation: str = Form(...),
     officer_location: str = Form(...),
     officer_contact: str = Form(...),
-    letter_date: str = Form(...)
+    letter_date: str = Form(...),
+    template_id: Optional[str] = Form(None),
+    current_user=Depends(get_current_user),
+    db=Depends(get_db)
 ):
     """
     Generate ISP letters from ZIP file (Step 7)
@@ -1100,7 +1103,14 @@ async def generate_isp_letters(
         
         # Generate letters
         generator = ISPLetterGenerator()
-        letters_zip = generator.generate_all_letters(str(temp_zip_path), case_details)
+        template = None
+        if template_id:
+            from services.letter_template_service import get_template, NotFoundError
+            try:
+                template = get_template(db, template_id, current_user)
+            except NotFoundError:
+                template = None  # fall back to system default
+        letters_zip = generator.generate_all_letters(str(temp_zip_path), case_details, template)
         
         logger.info(f"✅ ISP letters generated successfully")
         

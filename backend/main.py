@@ -136,7 +136,16 @@ async def startup_event():
         logger.info("✅ MongoDB indexes ready")
     except Exception as e:
         logger.warning(f"⚠️ Index creation skipped: {e}")
-    
+
+    # Seed the default ISP letter template (idempotent)
+    try:
+        from core.db import get_db as _get_sync_db
+        from services.letter_template_service import seed_default_template
+        seed_default_template(_get_sync_db())
+        logger.info("✅ Default letter template ready")
+    except Exception as e:
+        logger.warning(f"⚠️ Letter template seeding skipped: {e}")
+
     logger.info("ℹ️ Using Selenium bypass for IP lookups (localhost mode)")
 
 @app.on_event("shutdown")

@@ -2,7 +2,7 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import asyncio
 import csv
@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Form
 from fastapi.responses import FileResponse, StreamingResponse
 
 from core.config import PROCESSED_DIR
+from core.db import get_db
 
 from routers.auth_secure import get_current_user
 from utils.background_task_manager import task_manager
@@ -678,6 +679,16 @@ def isp_letters_catalog(_user: dict = Depends(get_current_user)):
 
 	db = get_db()
 
+	# Build query filter for user ownership
+	is_admin = _user.get("role") == "admin"
+	fir_query: Dict[str, Any] = {}
+	if not is_admin:
+		fir_query["$or"] = [
+			{"user_id": str(_user["_id"])},
+			{"user_id": {"$exists": False}},
+			{"user_id": None},
+		]
+
 	# Latest generation timestamp per FIR (sorted desc so first seen is newest).
 	gen_by_fir: Dict[str, Any] = {}
 	for g in db["generated_letters"].find({}).sort("generated_at", -1):
@@ -686,7 +697,7 @@ def isp_letters_catalog(_user: dict = Depends(get_current_user)):
 			gen_by_fir[fn] = g.get("generated_at")
 
 	cases = []
-	for fc in db[FIR_CASES_COLLECTION].find({}).sort("created_at", -1):
+	for fc in db[FIR_CASES_COLLECTION].find(fir_query).sort("created_at", -1):
 		fir_number = fc.get("fir_number", "")
 		run = _find_latest_run_for_fir(fir_number)
 		if run is None:
@@ -733,7 +744,9 @@ async def generate_isp_letters_from_run(
 	officer_location: str = Form("Sec. 16C, Dwarka, New Delhi"),
 	officer_contact: str = Form("N/A"),
 	letter_date: str = Form("N/A"),
-	_user: dict = Depends(get_current_user)
+	template_id: Optional[str] = Form(None),
+	_user: dict = Depends(get_current_user),
+	db=Depends(get_db)
 ):
 	run = _resolve_run_dir(run_dir)
 	if not run.exists():
@@ -768,13 +781,20 @@ async def generate_isp_letters_from_run(
 	}
 
 	generator = ISPLetterGenerator()
+	template = None
+	if template_id:
+		from services.letter_template_service import get_template, NotFoundError
+		try:
+			template = get_template(db, template_id, _user)
+		except NotFoundError:
+			template = None  # fall back to system default
 	zip_buffer = io.BytesIO()
 
 	with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
 		for isp_clean in sorted({_normalize_isp(str(x)) for x in df_res["isp"].fillna("Unknown").tolist()}):
 			template_type = generator.get_template_type(isp_clean)
 			letter_df = _build_letter_rows_df(run, isp_clean, template_type)
-			doc = generator.generate_letter(isp_clean, letter_df, case_details)
+			doc = generator.generate_letter(isp_clean, letter_df, case_details, template)
 
 			doc_buffer = io.BytesIO()
 			doc.save(doc_buffer)
